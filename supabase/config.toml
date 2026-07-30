@@ -1,0 +1,75 @@
+# Supabase project configuration — export/clone de « afrolove-world ».
+# À utiliser avec la CLI Supabase : `supabase link --project-ref <NOUVEAU_REF>`
+# puis `supabase db push` et `supabase functions deploy`.
+#
+# project_id ci-dessous = ref du projet SOURCE. Remplacez-le par le ref de la
+# cible après avoir créé le nouveau projet (ou laissez la CLI le faire au link).
+
+project_id = "xhpwmondzarbnzciruis"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+[db.pooler]
+enabled = false
+default_pool_size = 20
+max_client_conn = 100
+
+[realtime]
+enabled = true
+
+[studio]
+enabled = true
+port = 54323
+
+[storage]
+enabled = true
+# Buckets recréés par export/storage/01_buckets.sql (branding, kyc-documents,
+# profile-photos). Les fichiers binaires sont copiés séparément — voir
+# scripts/migrate-storage-files.mjs.
+
+[auth]
+enabled = true
+# site_url / redirect URLs / providers OAuth ne sont pas exportables via SQL :
+# à re-saisir dans le dashboard de la cible (voir export/config/README_AUTH.md).
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["afrolove://premium/callback"]
+jwt_expiry = 3600
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = false
+
+# ---------------------------------------------------------------------------
+# Edge Functions — le réglage verify_jwt reflète EXACTEMENT la source.
+# payment-webhook et payment-return DOIVENT rester en verify_jwt = false
+# (appelés par CamerPay / le navigateur, sans session Supabase).
+# ---------------------------------------------------------------------------
+
+[functions.upload-photo]
+verify_jwt = true
+
+[functions.upload-kyc]
+verify_jwt = true
+
+[functions.payment-initiate]
+verify_jwt = true
+
+[functions.payment-webhook]
+verify_jwt = false
+
+[functions.payment-return]
+verify_jwt = false
+
+[functions.payment-status]
+verify_jwt = true
