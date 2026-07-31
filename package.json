@@ -4,6 +4,7 @@
   "private": true,
   "description": "AfroLove World — Progressive Web App de rencontres afro-européennes.",
   "type": "module",
+  "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=20.11.0"
   },
