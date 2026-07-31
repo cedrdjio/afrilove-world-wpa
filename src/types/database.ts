@@ -1,11 +1,3 @@
-/**
- * Types de la base de données — générés depuis le schéma Supabase cible
- * (projet gfescsfdrwplsakazcpf) via `generate_typescript_types`.
- *
- * Régénérer après toute migration :
- *   supabase gen types typescript --project-id gfescsfdrwplsakazcpf > src/types/database.ts
- * NE PAS éditer à la main.
- */
 export type Json =
   | string
   | number
@@ -22,6 +14,99 @@ export type Database = {
   };
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string;
+          admin_id: string | null;
+          created_at: string;
+          id: string;
+          meta: Json;
+          target_id: string | null;
+          target_type: string;
+        };
+        Insert: {
+          action: string;
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          meta?: Json;
+          target_id?: string | null;
+          target_type: string;
+        };
+        Update: {
+          action?: string;
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          meta?: Json;
+          target_id?: string | null;
+          target_type?: string;
+        };
+        Relationships: [];
+      };
+      admin_broadcasts: {
+        Row: {
+          audience: Json;
+          body: string;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          recipients_count: number;
+          scheduled_for: string | null;
+          sent_at: string | null;
+          status: string;
+          title: string;
+        };
+        Insert: {
+          audience?: Json;
+          body: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          recipients_count?: number;
+          scheduled_for?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          title: string;
+        };
+        Update: {
+          audience?: Json;
+          body?: string;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          recipients_count?: number;
+          scheduled_for?: string | null;
+          sent_at?: string | null;
+          status?: string;
+          title?: string;
+        };
+        Relationships: [];
+      };
+      admin_invites: {
+        Row: {
+          created_at: string;
+          display_name: string | null;
+          email: string;
+          invited_by: string | null;
+          role: Database["public"]["Enums"]["admin_role"];
+        };
+        Insert: {
+          created_at?: string;
+          display_name?: string | null;
+          email: string;
+          invited_by?: string | null;
+          role?: Database["public"]["Enums"]["admin_role"];
+        };
+        Update: {
+          created_at?: string;
+          display_name?: string | null;
+          email?: string;
+          invited_by?: string | null;
+          role?: Database["public"]["Enums"]["admin_role"];
+        };
+        Relationships: [];
+      };
       admin_users: {
         Row: {
           created_at: string;
@@ -46,6 +131,59 @@ export type Database = {
           role?: Database["public"]["Enums"]["admin_role"];
           updated_at?: string;
           user_id?: string;
+        };
+        Relationships: [];
+      };
+      admin_warnings: {
+        Row: {
+          admin_id: string | null;
+          created_at: string;
+          id: string;
+          message: string;
+          profile_id: string;
+        };
+        Insert: {
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          message: string;
+          profile_id: string;
+        };
+        Update: {
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          message?: string;
+          profile_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "admin_warnings_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      app_settings: {
+        Row: {
+          key: string;
+          updated_at: string;
+          updated_by: string | null;
+          value: Json;
+        };
+        Insert: {
+          key: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value?: Json;
+        };
+        Update: {
+          key?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+          value?: Json;
         };
         Relationships: [];
       };
@@ -79,6 +217,153 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
+          },
+        ];
+      };
+      cities: {
+        Row: {
+          country_key: string | null;
+          id: string;
+          is_active: boolean;
+          key: string;
+          label: string;
+          sort_order: number;
+        };
+        Insert: {
+          country_key?: string | null;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          label: string;
+          sort_order?: number;
+        };
+        Update: {
+          country_key?: string | null;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          label?: string;
+          sort_order?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cities_country_key_fkey";
+            columns: ["country_key"];
+            isOneToOne: false;
+            referencedRelation: "countries";
+            referencedColumns: ["key"];
+          },
+        ];
+      };
+      client_logs: {
+        Row: {
+          context: Json | null;
+          created_at: string;
+          event: string;
+          id: string;
+          level: string;
+          message: string | null;
+          profile_id: string | null;
+        };
+        Insert: {
+          context?: Json | null;
+          created_at?: string;
+          event: string;
+          id?: string;
+          level?: string;
+          message?: string | null;
+          profile_id?: string | null;
+        };
+        Update: {
+          context?: Json | null;
+          created_at?: string;
+          event?: string;
+          id?: string;
+          level?: string;
+          message?: string | null;
+          profile_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "client_logs_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      countries: {
+        Row: {
+          emoji: string | null;
+          id: string;
+          is_active: boolean;
+          key: string;
+          label: string;
+          sort_order: number;
+        };
+        Insert: {
+          emoji?: string | null;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          label: string;
+          sort_order?: number;
+        };
+        Update: {
+          emoji?: string | null;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          label?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      coupons: {
+        Row: {
+          code: string;
+          created_at: string;
+          description: string | null;
+          discount_percent: number;
+          is_active: boolean;
+          max_redemptions: number | null;
+          plan_key: string | null;
+          redeemed_count: number;
+          updated_at: string;
+          valid_until: string | null;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          description?: string | null;
+          discount_percent: number;
+          is_active?: boolean;
+          max_redemptions?: number | null;
+          plan_key?: string | null;
+          redeemed_count?: number;
+          updated_at?: string;
+          valid_until?: string | null;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          description?: string | null;
+          discount_percent?: number;
+          is_active?: boolean;
+          max_redemptions?: number | null;
+          plan_key?: string | null;
+          redeemed_count?: number;
+          updated_at?: string;
+          valid_until?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coupons_plan_key_fkey";
+            columns: ["plan_key"];
+            isOneToOne: false;
+            referencedRelation: "premium_plans";
+            referencedColumns: ["key"];
           },
         ];
       };
@@ -228,6 +513,36 @@ export type Database = {
         };
         Relationships: [];
       };
+      lifestyle_options: {
+        Row: {
+          category: string;
+          id: string;
+          is_active: boolean;
+          key: string;
+          label: string;
+          sort_order: number;
+          value: string | null;
+        };
+        Insert: {
+          category: string;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          label: string;
+          sort_order?: number;
+          value?: string | null;
+        };
+        Update: {
+          category?: string;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          label?: string;
+          sort_order?: number;
+          value?: string | null;
+        };
+        Relationships: [];
+      };
       matches: {
         Row: {
           created_at: string;
@@ -263,6 +578,39 @@ export type Database = {
             referencedColumns: ["id"];
           },
         ];
+      };
+      message_templates: {
+        Row: {
+          body: string;
+          channel: string;
+          id: string;
+          is_active: boolean;
+          key: string;
+          name: string;
+          subject: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          body: string;
+          channel: string;
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          name: string;
+          subject?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          body?: string;
+          channel?: string;
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          name?: string;
+          subject?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       messages: {
         Row: {
@@ -347,6 +695,112 @@ export type Database = {
           },
         ];
       };
+      occupations: {
+        Row: {
+          id: string;
+          is_active: boolean;
+          key: string;
+          label: string;
+          sort_order: number;
+        };
+        Insert: {
+          id?: string;
+          is_active?: boolean;
+          key: string;
+          label: string;
+          sort_order?: number;
+        };
+        Update: {
+          id?: string;
+          is_active?: boolean;
+          key?: string;
+          label?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      payment_transactions: {
+        Row: {
+          amount: number;
+          amount_source_cents: number | null;
+          created_at: string;
+          currency: string;
+          id: string;
+          invoice_id: string;
+          paid_at: string | null;
+          payment_method: string | null;
+          plan_key: string;
+          profile_id: string;
+          provider: string;
+          provider_tx_id: string | null;
+          provider_uuid: string | null;
+          raw: Json | null;
+          status: string;
+          subscription_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          amount: number;
+          amount_source_cents?: number | null;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          invoice_id: string;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          plan_key: string;
+          profile_id: string;
+          provider?: string;
+          provider_tx_id?: string | null;
+          provider_uuid?: string | null;
+          raw?: Json | null;
+          status?: string;
+          subscription_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          amount?: number;
+          amount_source_cents?: number | null;
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          invoice_id?: string;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          plan_key?: string;
+          profile_id?: string;
+          provider?: string;
+          provider_tx_id?: string | null;
+          provider_uuid?: string | null;
+          raw?: Json | null;
+          status?: string;
+          subscription_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "payment_transactions_plan_key_fkey";
+            columns: ["plan_key"];
+            isOneToOne: false;
+            referencedRelation: "premium_plans";
+            referencedColumns: ["key"];
+          },
+          {
+            foreignKeyName: "payment_transactions_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payment_transactions_subscription_id_fkey";
+            columns: ["subscription_id"];
+            isOneToOne: false;
+            referencedRelation: "subscriptions";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       premium_plans: {
         Row: {
           currency: string;
@@ -382,6 +836,39 @@ export type Database = {
           sort_order?: number;
         };
         Relationships: [];
+      };
+      profile_favorites: {
+        Row: {
+          created_at: string;
+          profile_id: string;
+          target_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          profile_id: string;
+          target_id: string;
+        };
+        Update: {
+          created_at?: string;
+          profile_id?: string;
+          target_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "profile_favorites_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_favorites_target_id_fkey";
+            columns: ["target_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profile_interests: {
         Row: {
@@ -448,6 +935,10 @@ export type Database = {
           created_at: string;
           id: string;
           is_primary: boolean;
+          moderated_at: string | null;
+          moderated_by: string | null;
+          moderation_note: string | null;
+          moderation_status: string;
           position: number;
           profile_id: string;
           url: string;
@@ -456,6 +947,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_primary?: boolean;
+          moderated_at?: string | null;
+          moderated_by?: string | null;
+          moderation_note?: string | null;
+          moderation_status?: string;
           position?: number;
           profile_id: string;
           url: string;
@@ -464,6 +959,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           is_primary?: boolean;
+          moderated_at?: string | null;
+          moderated_by?: string | null;
+          moderation_note?: string | null;
+          moderation_status?: string;
           position?: number;
           profile_id?: string;
           url?: string;
@@ -472,6 +971,39 @@ export type Database = {
           {
             foreignKeyName: "profile_photos_profile_id_fkey";
             columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      profile_views: {
+        Row: {
+          target_id: string;
+          viewed_at: string;
+          viewer_id: string;
+        };
+        Insert: {
+          target_id: string;
+          viewed_at?: string;
+          viewer_id: string;
+        };
+        Update: {
+          target_id?: string;
+          viewed_at?: string;
+          viewer_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "profile_views_target_id_fkey";
+            columns: ["target_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "profile_views_viewer_id_fkey";
+            columns: ["viewer_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -514,6 +1046,7 @@ export type Database = {
           smoking: string | null;
           status_changed_at: string | null;
           status_reason: string | null;
+          suspended_until: string | null;
           updated_at: string;
           wants_children: string | null;
         };
@@ -552,6 +1085,7 @@ export type Database = {
           smoking?: string | null;
           status_changed_at?: string | null;
           status_reason?: string | null;
+          suspended_until?: string | null;
           updated_at?: string;
           wants_children?: string | null;
         };
@@ -590,6 +1124,7 @@ export type Database = {
           smoking?: string | null;
           status_changed_at?: string | null;
           status_reason?: string | null;
+          suspended_until?: string | null;
           updated_at?: string;
           wants_children?: string | null;
         };
@@ -796,6 +1331,88 @@ export type Database = {
           },
         ];
       };
+      support_messages: {
+        Row: {
+          author_id: string | null;
+          body: string;
+          created_at: string;
+          id: string;
+          is_from_member: boolean;
+          is_internal: boolean;
+          ticket_id: string;
+        };
+        Insert: {
+          author_id?: string | null;
+          body: string;
+          created_at?: string;
+          id?: string;
+          is_from_member?: boolean;
+          is_internal?: boolean;
+          ticket_id: string;
+        };
+        Update: {
+          author_id?: string | null;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          is_from_member?: boolean;
+          is_internal?: boolean;
+          ticket_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "support_messages_ticket_id_fkey";
+            columns: ["ticket_id"];
+            isOneToOne: false;
+            referencedRelation: "support_tickets";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      support_tickets: {
+        Row: {
+          assigned_to: string | null;
+          category: string;
+          created_at: string;
+          id: string;
+          priority: string;
+          profile_id: string | null;
+          status: string;
+          subject: string;
+          updated_at: string;
+        };
+        Insert: {
+          assigned_to?: string | null;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          priority?: string;
+          profile_id?: string | null;
+          status?: string;
+          subject: string;
+          updated_at?: string;
+        };
+        Update: {
+          assigned_to?: string | null;
+          category?: string;
+          created_at?: string;
+          id?: string;
+          priority?: string;
+          profile_id?: string | null;
+          status?: string;
+          subject?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_profile_id_fkey";
+            columns: ["profile_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       swipes: {
         Row: {
           action: string;
@@ -843,8 +1460,130 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      add_favorite: { Args: { p_target_id: string }; Returns: undefined };
+      admin_analytics: { Args: { p_days?: number }; Returns: Json };
+      admin_audience_count: { Args: { p_audience: Json }; Returns: number };
+      admin_audience_profiles: {
+        Args: { p_audience: Json };
+        Returns: {
+          profile_id: string;
+        }[];
+      };
+      admin_audit_list: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_target_type?: string;
+        };
+        Returns: Json;
+      };
+      admin_cancel_broadcast: { Args: { p_id: string }; Returns: undefined };
+      admin_cancel_invite: { Args: { p_email: string }; Returns: undefined };
+      admin_cancel_subscription: {
+        Args: { p_refund?: boolean; p_subscription_id: string };
+        Returns: undefined;
+      };
+      admin_catalog_allowed: { Args: { p_catalog: string }; Returns: boolean };
+      admin_catalog_delete: {
+        Args: { p_catalog: string; p_id: string };
+        Returns: undefined;
+      };
+      admin_catalog_list: { Args: { p_catalog: string }; Returns: Json };
+      admin_catalog_upsert: {
+        Args: { p_catalog: string; p_row: Json };
+        Returns: undefined;
+      };
+      admin_conversation_messages: {
+        Args: { p_limit?: number; p_match_id: string };
+        Returns: Json;
+      };
       admin_dashboard_charts: { Args: { p_days?: number }; Returns: Json };
       admin_dashboard_stats: { Args: never; Returns: Json };
+      admin_delete_coupon: { Args: { p_code: string }; Returns: undefined };
+      admin_delete_user: { Args: { p_user_id: string }; Returns: undefined };
+      admin_get_settings: { Args: never; Returns: Json };
+      admin_get_ticket: { Args: { p_ticket_id: string }; Returns: Json };
+      admin_get_user_details: { Args: { p_user_id: string }; Returns: Json };
+      admin_grant_role: {
+        Args: {
+          p_display_name?: string;
+          p_email: string;
+          p_role: Database["public"]["Enums"]["admin_role"];
+        };
+        Returns: undefined;
+      };
+      admin_grant_subscription: {
+        Args: { p_plan_key: string; p_user_id: string };
+        Returns: string;
+      };
+      admin_list_admins: { Args: never; Returns: Json };
+      admin_list_coupons: { Args: never; Returns: Json };
+      admin_list_kyc: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_photos: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_reports: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_subscriptions: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_templates: { Args: never; Returns: Json };
+      admin_list_tickets: {
+        Args: {
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+        };
+        Returns: Json;
+      };
+      admin_list_users: {
+        Args: {
+          p_gender?: string;
+          p_limit?: number;
+          p_offset?: number;
+          p_query?: string;
+          p_status?: string;
+          p_verified?: boolean;
+        };
+        Returns: Json;
+      };
+      admin_login_logs: { Args: { p_limit?: number }; Returns: Json };
+      admin_moderate_photo: {
+        Args: { p_action: string; p_note?: string; p_photo_id: string };
+        Returns: undefined;
+      };
+      admin_moderation_stats: { Args: never; Returns: Json };
+      admin_notification_history: { Args: { p_limit?: number }; Returns: Json };
+      admin_premium_stats: { Args: never; Returns: Json };
       admin_recent_activity: {
         Args: { p_limit?: number };
         Returns: {
@@ -854,6 +1593,20 @@ export type Database = {
           label: string;
         }[];
       };
+      admin_reply_ticket: {
+        Args: { p_body: string; p_internal?: boolean; p_ticket_id: string };
+        Returns: undefined;
+      };
+      admin_review_kyc: {
+        Args: { p_ids: string[]; p_reason?: string; p_status: string };
+        Returns: number;
+      };
+      admin_review_reports: {
+        Args: { p_ids: string[]; p_status: string };
+        Returns: number;
+      };
+      admin_revoke_role: { Args: { p_user_id: string }; Returns: undefined };
+      admin_role_level: { Args: never; Returns: number };
       admin_search_profiles: {
         Args: { p_limit?: number; p_query: string };
         Returns: {
@@ -866,6 +1619,102 @@ export type Database = {
           id: string;
           is_verified: boolean;
           last_name: string;
+        }[];
+      };
+      admin_send_notification: {
+        Args: {
+          p_audience?: Json;
+          p_body: string;
+          p_scheduled_for?: string;
+          p_title: string;
+        };
+        Returns: Json;
+      };
+      admin_set_account_status: {
+        Args: { p_reason?: string; p_status: string; p_user_id: string };
+        Returns: undefined;
+      };
+      admin_set_admin_active: {
+        Args: { p_active: boolean; p_user_id: string };
+        Returns: undefined;
+      };
+      admin_set_profile_verified: {
+        Args: { p_user_id: string; p_verified: boolean };
+        Returns: undefined;
+      };
+      admin_temp_ban: {
+        Args: { p_days: number; p_reason: string; p_user_id: string };
+        Returns: undefined;
+      };
+      admin_update_profile: {
+        Args: { p_patch: Json; p_user_id: string };
+        Returns: Json;
+      };
+      admin_update_setting: {
+        Args: { p_key: string; p_value: Json };
+        Returns: undefined;
+      };
+      admin_update_ticket: {
+        Args: { p_patch: Json; p_ticket_id: string };
+        Returns: undefined;
+      };
+      admin_upsert_coupon: {
+        Args: { p_code: string; p_patch: Json };
+        Returns: undefined;
+      };
+      admin_upsert_plan: {
+        Args: { p_key: string; p_patch: Json };
+        Returns: undefined;
+      };
+      admin_upsert_template: {
+        Args: { p_id: string; p_patch: Json };
+        Returns: undefined;
+      };
+      admin_verify_email: { Args: { p_user_id: string }; Returns: undefined };
+      admin_warn_user: {
+        Args: { p_message: string; p_user_id: string };
+        Returns: undefined;
+      };
+      count_search_profiles: {
+        Args: {
+          p_age_max?: number;
+          p_age_min?: number;
+          p_country?: string;
+          p_interest_ids?: string[];
+          p_max_distance_km?: number;
+          p_scope?: string;
+          p_verified_only?: boolean;
+        };
+        Returns: number;
+      };
+      fail_camerpay_payment: {
+        Args: { p_provider_uuid: string; p_raw?: Json; p_status: string };
+        Returns: undefined;
+      };
+      get_app_secret: { Args: { p_name: string }; Returns: string };
+      get_client_logs: {
+        Args: { p_level?: string; p_limit?: number };
+        Returns: {
+          context: Json | null;
+          created_at: string;
+          event: string;
+          id: string;
+          level: string;
+          message: string | null;
+          profile_id: string | null;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "client_logs";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      get_discovery_countries: {
+        Args: never;
+        Returns: {
+          country: string;
+          member_count: number;
         }[];
       };
       get_my_blocked_profiles: {
@@ -896,6 +1745,8 @@ export type Database = {
       get_my_entitlements: {
         Args: never;
         Returns: {
+          favorites_count: number;
+          favorites_limit: number;
           is_premium: boolean;
           likers_count: number;
           likes_limit: number;
@@ -904,6 +1755,14 @@ export type Database = {
           premium_until: string;
           super_likes_limit: number;
           super_likes_used_today: number;
+          swipes_limit: number;
+          swipes_used_today: number;
+        }[];
+      };
+      get_my_favorite_ids: {
+        Args: never;
+        Returns: {
+          target_id: string;
         }[];
       };
       get_my_favorites: {
@@ -937,6 +1796,7 @@ export type Database = {
           likes_received: number;
           match_rate: number;
           matches_count: number;
+          views_count: number;
         }[];
       };
       get_public_profile: {
@@ -967,6 +1827,17 @@ export type Database = {
           wants_children: string;
         }[];
       };
+      get_saved_favorites: {
+        Args: never;
+        Returns: {
+          avatar_url: string;
+          city: string;
+          first_name: string;
+          is_verified: boolean;
+          profile_id: string;
+          saved_at: string;
+        }[];
+      };
       grant_subscription: {
         Args: {
           p_plan_key: string;
@@ -988,16 +1859,24 @@ export type Database = {
           subscription_id: string;
         }[];
       };
+      record_profile_view: {
+        Args: { p_profile_id: string };
+        Returns: undefined;
+      };
+      remove_favorite: { Args: { p_target_id: string }; Returns: undefined };
       search_profiles: {
         Args: {
           p_age_max?: number;
           p_age_min?: number;
+          p_country?: string;
+          p_interest_ids?: string[];
           p_limit?: number;
           p_max_distance_km?: number;
           p_new_only?: boolean;
           p_offset?: number;
           p_online_recently?: boolean;
           p_query?: string;
+          p_scope?: string;
           p_verified_only?: boolean;
         };
         Returns: {
@@ -1016,6 +1895,17 @@ export type Database = {
           is_verified: boolean;
           last_active_at: string;
         }[];
+      };
+      settle_camerpay_payment: {
+        Args: {
+          p_amount: number;
+          p_paid_at?: string;
+          p_payment_method?: string;
+          p_provider_tx_id?: string;
+          p_provider_uuid: string;
+          p_raw?: Json;
+        };
+        Returns: string;
       };
     };
     Enums: {
