@@ -19,7 +19,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.110.0";
 import { AwsClient } from "npm:aws4fetch@1.0.20";
 
 const BUCKET = "profile-photos";
-const S3_REGION = "eu-west-3";
+const S3_REGION = "eu-central-1";
 const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 
 function s3Endpoint(): string {
