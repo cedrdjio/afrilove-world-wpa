@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { m } from "framer-motion";
 import { MailCheck } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { AuthScreen } from "@/features/auth/components/auth-screen";
@@ -31,7 +31,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     setValue,
     formState: { errors },
   } = useForm<RegisterValues>({
@@ -45,7 +45,7 @@ export default function RegisterPage() {
     },
   });
 
-  const accepted = watch("acceptTerms");
+  const accepted = useWatch({ control, name: "acceptTerms" });
 
   async function onSubmit(values: RegisterValues) {
     setPending(true);
