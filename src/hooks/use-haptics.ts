@@ -4,13 +4,14 @@ import { useCallback } from "react";
 
 import { useSettingsStore } from "@/store/settings-store";
 
-type HapticPattern = "light" | "medium" | "success" | "warning";
+type HapticPattern = "light" | "medium" | "success" | "warning" | "error";
 
 const PATTERNS: Record<HapticPattern, number | number[]> = {
   light: 8,
   medium: 16,
   success: [10, 40, 12],
   warning: [20, 60, 20],
+  error: [30, 40, 30, 40],
 };
 
 /**

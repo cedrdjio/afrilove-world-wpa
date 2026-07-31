@@ -1,12 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { m } from "framer-motion";
 import { Globe2, ShieldCheck, Sparkles } from "lucide-react";
-import { toast } from "sonner";
 
 import { Logo } from "@/components/brand/logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Button } from "@/components/ui/button";
+import { ROUTES } from "@/constants/routes";
 import { useHaptics } from "@/hooks/use-haptics";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
@@ -33,13 +34,7 @@ const CHIPS = [
  */
 export function Welcome() {
   const haptic = useHaptics();
-
-  const soon = () => {
-    haptic("medium");
-    toast("Bientôt disponible", {
-      description: "L'inscription arrive au prochain sprint. ✨",
-    });
-  };
+  const tap = () => haptic("medium");
 
   return (
     <m.div
@@ -105,16 +100,17 @@ export function Welcome() {
       </m.p>
 
       <m.div variants={item} className="mt-auto flex flex-col gap-3 pt-8">
-        <Button size="lg" block onClick={soon}>
-          Créer mon compte
+        <Button size="lg" block asChild onClick={tap}>
+          <Link href={ROUTES.register}>Créer mon compte</Link>
         </Button>
-        <button
-          onClick={soon}
+        <Link
+          href={ROUTES.login}
+          onClick={tap}
           className="text-muted-foreground hover:text-foreground text-center text-sm font-medium transition-colors"
         >
           Déjà membre ?{" "}
           <span className="text-primary font-bold">Se connecter</span>
-        </button>
+        </Link>
       </m.div>
     </m.div>
   );
