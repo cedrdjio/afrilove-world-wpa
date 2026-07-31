@@ -1,0 +1,8 @@
+.next/
+node_modules/
+public/sw.js
+public/swe-worker-*.js
+pnpm-lock.yaml
+export/
+supabase/migrations/
+*.md
