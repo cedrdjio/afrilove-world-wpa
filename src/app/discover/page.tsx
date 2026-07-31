@@ -85,7 +85,7 @@ export default function DiscoverPage() {
         block
         variant="secondary"
         className="mt-6"
-        onClick={() => router.push(ROUTES.onboarding)}
+        onClick={() => router.push(ROUTES.profile)}
       >
         <UserRound className="size-5" aria-hidden />
         Mon profil

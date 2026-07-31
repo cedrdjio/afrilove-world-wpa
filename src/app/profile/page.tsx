@@ -110,17 +110,12 @@ export default function ProfilePage() {
 
       <div className="mt-auto flex flex-col gap-3 px-6 pt-8">
         <Button size="lg" block asChild>
-          <Link href={ROUTES.onboarding}>
-            <Pencil className="size-5" aria-hidden />
-            Modifier mon profil
-          </Link>
+          <Link href={ROUTES.discover}>Retour à l’accueil</Link>
         </Button>
-        <Link
-          href={ROUTES.discover}
-          className="text-muted-foreground hover:text-foreground text-center text-sm font-medium"
-        >
-          Retour à l’accueil
-        </Link>
+        <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-xs">
+          <Pencil className="size-3.5" aria-hidden />
+          L’édition du profil arrive prochainement.
+        </p>
       </div>
     </div>
   );
