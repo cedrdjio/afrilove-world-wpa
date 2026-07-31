@@ -1,11 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
-import { type SupabaseClient } from "@supabase/supabase-js";
-
 import { createClient } from "@/services/supabase/client";
 
-const SupabaseContext = createContext<SupabaseClient | null>(null);
+/** Type du client dérivé de la factory — évite les soucis d'arité générique. */
+type TypedClient = ReturnType<typeof createClient>;
+
+const SupabaseContext = createContext<TypedClient | null>(null);
 
 /**
  * Expose un client Supabase navigateur stable à tout l'arbre client.
@@ -20,7 +21,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useSupabase(): SupabaseClient {
+export function useSupabase(): TypedClient {
   const client = useContext(SupabaseContext);
   if (!client) {
     throw new Error("useSupabase doit être utilisé dans <SupabaseProvider>.");
