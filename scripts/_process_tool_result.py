@@ -15,18 +15,28 @@ os.makedirs(MIG_DIR, exist_ok=True)
 
 
 def extract_rows(path):
-    outer = json.load(open(path))
-    # tool result is a list of content blocks; find the text block
-    text = None
-    if isinstance(outer, list):
-        for blk in outer:
-            if isinstance(blk, dict) and blk.get("type") == "text":
-                text = blk["text"]
-                break
-    else:
-        text = outer
-    obj = json.loads(text)
-    result = obj["result"] if isinstance(obj, dict) and "result" in obj else text
+    raw = open(path).read()
+    text = raw
+    # Case A: persisted as JSON content-blocks [{"type":"text","text":"..."}]
+    try:
+        outer = json.loads(raw)
+        if isinstance(outer, list):
+            for blk in outer:
+                if isinstance(blk, dict) and blk.get("type") == "text":
+                    text = blk["text"]
+                    break
+        elif isinstance(outer, dict) and "result" in outer:
+            text = json.dumps(outer)
+    except Exception:
+        pass  # Case B: persisted as plain text — use raw as-is
+    # text may itself be a JSON string {"result": "..."} or the raw result
+    result = text
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, dict) and "result" in obj:
+            result = obj["result"]
+    except Exception:
+        pass
     m = re.search(r"<untrusted-data-[0-9a-f-]+>\n(.*)\n</untrusted-data-", result, re.DOTALL)
     payload = m.group(1) if m else result
     parsed = json.loads(payload)
