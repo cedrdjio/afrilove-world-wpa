@@ -3,13 +3,13 @@
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useMounted } from "@/hooks/use-mounted";
 
 /**
- * Bascule clair/sombre « Fond sombre » (comme dans le header du mockup).
- * SSR-safe : n'affiche l'état réel qu'après montage pour éviter les flashs.
+ * Bascule clair/sombre compacte : un petit bouton icône (soleil/lune),
+ * comme dans le header du mockup. SSR-safe (état réel après montage).
  */
 export function ThemeToggle({ className }: { className?: string }) {
   const { resolvedTheme, setTheme } = useTheme();
@@ -19,23 +19,24 @@ export function ThemeToggle({ className }: { className?: string }) {
   const isDark = mounted && resolvedTheme === "dark";
 
   return (
-    <label
-      className={`glass inline-flex cursor-pointer items-center gap-2 rounded-[var(--radius-pill)] px-3 py-1.5 text-sm ${className ?? ""}`}
+    <button
+      type="button"
+      onClick={() => {
+        haptic("light");
+        setTheme(isDark ? "light" : "dark");
+      }}
+      aria-label={isDark ? "Passer en mode clair" : "Passer en mode sombre"}
+      aria-pressed={isDark}
+      className={cn(
+        "border-border/60 bg-card/60 text-foreground hover:bg-muted focus-visible:ring-ring grid size-10 place-items-center rounded-full border backdrop-blur transition-colors focus-visible:ring-2 focus-visible:outline-none",
+        className,
+      )}
     >
       {isDark ? (
-        <Moon className="text-brand-400 size-4" aria-hidden />
+        <Moon className="text-brand-300 size-[18px]" aria-hidden />
       ) : (
-        <Sun className="text-warning size-4" aria-hidden />
+        <Sun className="text-warning size-[18px]" aria-hidden />
       )}
-      <span className="text-foreground font-medium">Fond sombre</span>
-      <Switch
-        checked={isDark}
-        onCheckedChange={(checked) => {
-          haptic("light");
-          setTheme(checked ? "dark" : "light");
-        }}
-        aria-label="Activer le fond sombre"
-      />
-    </label>
+    </button>
   );
 }

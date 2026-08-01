@@ -32,6 +32,8 @@ export const metadata: Metadata = {
   applicationName: siteConfig.name,
   keywords: [...siteConfig.keywords],
   authors: [{ name: siteConfig.creator }],
+  category: "social",
+  alternates: { canonical: "/" },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

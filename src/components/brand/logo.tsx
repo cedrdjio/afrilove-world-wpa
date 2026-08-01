@@ -3,10 +3,8 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
- * Logo AfroLove World.
- * Réutilise la silhouette de la charte (asset `logo-white.png`) posée sur le
- * dégradé signature — lisible sur fond clair comme sombre — avec le logotype
- * « AfroLove World » (Plus Jakarta Sans).
+ * Logo AfriLove World — illustration officielle sur fond transparent
+ * (`/brand/logo.png`) + logotype « AfriLove World » (Plus Jakarta Sans).
  */
 export function Logo({
   className,
@@ -18,9 +16,9 @@ export function Logo({
   size?: "sm" | "md" | "lg";
 }) {
   const mark = {
-    sm: "size-8",
-    md: "size-10",
-    lg: "size-14",
+    sm: "size-9",
+    md: "size-11",
+    lg: "size-16",
   }[size];
 
   const text = {
@@ -31,21 +29,14 @@ export function Logo({
 
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <span
-        className={cn(
-          "gradient-signature shadow-brand grid place-items-center rounded-[30%]",
-          mark,
-        )}
-      >
-        <Image
-          src="/brand/logo-white.png"
-          alt=""
-          width={56}
-          height={56}
-          className="size-[62%] object-contain"
-          priority
-        />
-      </span>
+      <Image
+        src="/brand/logo.png"
+        alt="AfriLove World"
+        width={96}
+        height={96}
+        className={cn("object-contain", mark)}
+        priority
+      />
       {showWordmark && (
         <span
           className={cn(
@@ -53,7 +44,7 @@ export function Logo({
             text,
           )}
         >
-          <span className="text-foreground">AfroLove</span>{" "}
+          <span className="text-foreground">AfriLove</span>{" "}
           <span className="text-gradient">World</span>
         </span>
       )}
