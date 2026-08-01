@@ -14,7 +14,7 @@ export const siteConfig = {
     dark: "#1d1530",
   },
   // URL publique (surchargée par NEXT_PUBLIC_APP_URL en prod).
-  url: process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  url: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
   ogImage: "/og.png",
   creator: "AfroLove World",
   keywords: [
