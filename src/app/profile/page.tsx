@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { m } from "framer-motion";
-import { BadgeCheck, MapPin, Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { BottomNav } from "@/components/layout/bottom-nav";
 import { Spinner } from "@/components/ui/spinner";
 import { ROUTES } from "@/constants/routes";
+import {
+  MyProfileScreen,
+  type ProfileViewModel,
+} from "@/features/profile/components/my-profile-screen";
+import { DEMO_ME } from "@/features/profiles/data";
 import { useAuth } from "@/providers/auth-provider";
 
 function ageFrom(birthDate: string | null): number | null {
@@ -17,8 +19,9 @@ function ageFrom(birthDate: string | null): number | null {
 }
 
 /**
- * Fiche profil du membre (Sprint 01, lecture seule). L'édition détaillée et la
- * gestion des photos arriveront avec l'app ; ici on affiche l'essentiel.
+ * « Mon profil » (« 08 »). Garde d'authentification + redirection onboarding
+ * conservées ; les données Supabase réelles alimentent le view-model, avec
+ * repli sur les valeurs de démonstration pour les champs non renseignés.
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -38,85 +41,25 @@ export default function ProfilePage() {
     );
   }
 
-  const age = ageFrom(profile.birth_date);
-  const location = [profile.city, profile.country].filter(Boolean).join(", ");
+  const city =
+    [profile.city, profile.country].filter(Boolean).join(", ") ||
+    `${DEMO_ME.origin} · vit à ${DEMO_ME.city}`;
+
+  const vm: ProfileViewModel = {
+    firstName: profile.first_name ?? DEMO_ME.firstName,
+    age: ageFrom(profile.birth_date) ?? DEMO_ME.age,
+    city,
+    avatar: profile.avatar_url ?? DEMO_ME.avatar,
+    bio: profile.bio ?? DEMO_ME.bio,
+    verified: profile.is_verified ?? DEMO_ME.verified,
+    completion: profile.profile_completed ? 100 : DEMO_ME.completion,
+    stats: DEMO_ME.stats,
+  };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-10">
-      {/* En-tête visuel : avatar sur dégradé signature. */}
-      <div className="gradient-signature relative h-44 w-full">
-        <div className="absolute inset-x-0 -bottom-12 flex justify-center">
-          <div className="border-background bg-muted size-28 overflow-hidden rounded-full border-4 shadow-lg">
-            {profile.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={profile.avatar_url}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : (
-              <div className="text-muted-foreground grid size-full place-items-center text-3xl font-bold">
-                {(profile.first_name ?? "?").charAt(0).toUpperCase()}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <m.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-        className="mt-16 flex flex-col items-center px-6 text-center"
-      >
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-extrabold tracking-tight">
-            {profile.first_name}
-            {age ? (
-              <span className="text-muted-foreground">, {age}</span>
-            ) : null}
-          </h1>
-          {profile.is_verified ? (
-            <BadgeCheck
-              className="text-primary size-6"
-              aria-label="Profil vérifié"
-            />
-          ) : null}
-        </div>
-        {location ? (
-          <p className="text-muted-foreground mt-1 flex items-center gap-1 text-sm">
-            <MapPin className="size-4" aria-hidden />
-            {location}
-          </p>
-        ) : null}
-
-        {profile.bio ? (
-          <p className="text-foreground/90 mt-5 text-[0.95rem] leading-relaxed text-pretty">
-            {profile.bio}
-          </p>
-        ) : null}
-
-        {!profile.profile_completed ? (
-          <div className="border-border bg-card mt-6 w-full rounded-[var(--radius-lg)] border p-4 text-left">
-            <p className="text-foreground text-sm font-semibold">
-              Complétez votre profil
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Ajoutez au moins 2 photos pour apparaître dans la découverte.
-            </p>
-          </div>
-        ) : null}
-      </m.div>
-
-      <div className="mt-auto flex flex-col gap-3 px-6 pt-8">
-        <Button size="lg" block asChild>
-          <Link href={ROUTES.discover}>Retour à l’accueil</Link>
-        </Button>
-        <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-xs">
-          <Pencil className="size-3.5" aria-hidden />
-          L’édition du profil arrive prochainement.
-        </p>
-      </div>
-    </div>
+    <>
+      <MyProfileScreen vm={vm} />
+      <BottomNav />
+    </>
   );
 }
