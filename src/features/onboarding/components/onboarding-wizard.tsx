@@ -77,7 +77,7 @@ const STEPS: StepDef[] = [
     title: "Vos centres d’intérêt",
     valid: (d) => d.interestIds.length >= MIN_INTERESTS,
   },
-  { key: "review", title: "Presque terminé 🎉", valid: () => true },
+  { key: "review", title: "Presque terminé", valid: () => true },
   { key: "photos", title: "Ajoutez vos photos", valid: () => true },
 ];
 

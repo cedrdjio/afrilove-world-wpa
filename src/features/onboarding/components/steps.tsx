@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { Cake, Loader2, MapPin, Navigation } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import {
   CHILDREN_OPTIONS,
   DRINKING_OPTIONS,
@@ -22,6 +24,7 @@ import {
   MIN_INTERESTS,
   type OnboardingData,
 } from "@/features/onboarding/types";
+import { useGeolocation } from "@/features/onboarding/use-geolocation";
 import { Choice } from "./choice";
 
 type Patch = (patch: Partial<OnboardingData>) => void;
@@ -30,7 +33,7 @@ interface StepProps {
   patch: Patch;
 }
 
-/** Grille de choix uniques réutilisable. */
+/** Grille de choix uniques réutilisable (cartes pleine largeur). */
 function SingleSelect<T extends string>({
   options,
   value,
@@ -95,17 +98,45 @@ export function BirthDateStep({ data, patch }: StepProps) {
     : null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <Input
-        type="date"
-        value={data.birthDate ?? ""}
-        max={max}
-        min={min}
-        onChange={(e) => patch({ birthDate: e.target.value || null })}
-        aria-label="Date de naissance"
-      />
+    <div className="flex flex-col gap-4">
+      <label
+        htmlFor="birthDate"
+        className={cn(
+          "focus-within:border-primary flex items-center gap-3 rounded-[var(--radius-lg)] border px-4 py-3.5 transition-colors",
+          data.birthDate
+            ? "border-primary/60 bg-primary/[0.04]"
+            : "border-border bg-card",
+        )}
+      >
+        <span
+          className={cn(
+            "grid size-11 shrink-0 place-items-center rounded-[var(--radius-md)]",
+            data.birthDate
+              ? "gradient-signature text-white"
+              : "bg-muted text-muted-foreground",
+          )}
+          aria-hidden
+        >
+          <Cake className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-muted-foreground block text-xs font-medium">
+            Date de naissance
+          </span>
+          <input
+            id="birthDate"
+            type="date"
+            value={data.birthDate ?? ""}
+            max={max}
+            min={min}
+            onChange={(e) => patch({ birthDate: e.target.value || null })}
+            aria-label="Date de naissance"
+            className="text-foreground w-full bg-transparent text-[1.05rem] font-semibold outline-none"
+          />
+        </span>
+      </label>
       {age !== null ? (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-muted-foreground text-sm leading-relaxed">
           Vous avez <span className="text-primary font-bold">{age} ans</span>.
           Seul votre âge sera visible, jamais votre date de naissance.
         </p>
@@ -123,26 +154,91 @@ export function LocationStep({
   patch,
   countries,
 }: StepProps & { countries: CountryOption[] }) {
+  const { status, request } = useGeolocation();
+  const locating = status === "locating";
+
+  async function useMyLocation() {
+    const place = await request();
+    if (!place) return;
+    patch({
+      ...(place.country ? { country: place.country } : {}),
+      ...(place.city ? { city: place.city } : {}),
+    });
+  }
+
   return (
     <div className="flex flex-col gap-4">
+      <button
+        type="button"
+        onClick={useMyLocation}
+        disabled={locating}
+        className="border-primary/40 bg-primary/[0.05] flex items-center gap-3.5 rounded-[var(--radius-lg)] border px-4 py-3.5 text-left transition-all active:scale-[0.99] disabled:opacity-70"
+      >
+        <span
+          className="gradient-signature grid size-11 shrink-0 place-items-center rounded-[var(--radius-md)] text-white"
+          aria-hidden
+        >
+          {locating ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Navigation className="size-5" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="text-primary block text-[0.98rem] font-semibold">
+            {locating ? "Localisation en cours…" : "Utiliser ma position"}
+          </span>
+          <span className="text-muted-foreground block text-xs leading-snug">
+            Renseigne automatiquement votre pays et votre ville.
+          </span>
+        </span>
+      </button>
+
+      {status === "denied" ? (
+        <p className="text-danger text-xs leading-snug">
+          Permission refusée. Autorisez la localisation dans les réglages, ou
+          renseignez votre pays manuellement ci-dessous.
+        </p>
+      ) : status === "unsupported" ? (
+        <p className="text-muted-foreground text-xs leading-snug">
+          Géolocalisation indisponible sur cet appareil — saisie manuelle
+          ci-dessous.
+        </p>
+      ) : status === "error" ? (
+        <p className="text-muted-foreground text-xs leading-snug">
+          Position introuvable. Réessayez ou renseignez-la manuellement.
+        </p>
+      ) : null}
+
+      <div className="flex items-center gap-3">
+        <span className="bg-border h-px flex-1" />
+        <span className="text-subtle-foreground text-xs font-medium">ou</span>
+        <span className="bg-border h-px flex-1" />
+      </div>
+
       <div className="flex flex-col gap-1.5">
         <label htmlFor="country" className="text-sm font-semibold">
           Pays
         </label>
-        <select
-          id="country"
-          value={data.country ?? ""}
-          onChange={(e) => patch({ country: e.target.value || null })}
-          className="border-border bg-muted/40 text-foreground focus-visible:border-primary focus-visible:ring-ring/40 h-12 w-full rounded-[var(--radius-md)] border px-4 text-[0.95rem] focus-visible:ring-2 focus-visible:outline-none"
-        >
-          <option value="">Sélectionner…</option>
-          {countries.map((c) => (
-            <option key={c.key} value={c.label}>
-              {c.emoji ? `${c.emoji}  ` : ""}
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <MapPin
+            className="text-muted-foreground pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
+            aria-hidden
+          />
+          <select
+            id="country"
+            value={data.country ?? ""}
+            onChange={(e) => patch({ country: e.target.value || null })}
+            className="border-border bg-muted/40 text-foreground focus-visible:border-primary focus-visible:ring-ring/40 h-12 w-full rounded-[var(--radius-md)] border pr-4 pl-10 text-[0.95rem] focus-visible:ring-2 focus-visible:outline-none"
+          >
+            <option value="">Sélectionner…</option>
+            {countries.map((c) => (
+              <option key={c.key} value={c.label}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="city" className="text-sm font-semibold">
@@ -190,13 +286,13 @@ function LifestyleGroup<T extends string>({
   onPick: (v: T) => void;
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2.5">
       <p className="text-foreground text-sm font-semibold">{title}</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2.5">
         {options.map((o) => (
           <Choice
             key={o.value}
-            compact
+            variant="tile"
             label={o.label}
             icon={o.icon}
             selected={value === o.value}
@@ -269,9 +365,8 @@ export function InterestsStep({
         {interests.map((i) => (
           <Choice
             key={i.id}
-            compact
+            variant="pill"
             label={i.label}
-            icon={i.icon ?? undefined}
             selected={selected.has(i.id)}
             onSelect={() => toggle(i.id)}
           />
@@ -282,20 +377,21 @@ export function InterestsStep({
 }
 
 export function ReviewStep({ data }: StepProps) {
+  const labelOf = <T extends string>(
+    options: Option<T>[],
+    value: T | null,
+  ): string => options.find((o) => o.value === value)?.label ?? "—";
+
   const rows: [string, string][] = [
-    [
-      "Je suis",
-      GENDER_OPTIONS.find((o) => o.value === data.gender)?.label ?? "—",
-    ],
-    [
-      "Je recherche",
-      LOOKING_FOR_OPTIONS.find((o) => o.value === data.lookingFor)?.label ??
-        "—",
-    ],
+    ["Je suis", labelOf(GENDER_OPTIONS, data.gender)],
+    ["Je recherche", labelOf(LOOKING_FOR_OPTIONS, data.lookingFor)],
     [
       "Localisation",
       [data.city, data.country].filter(Boolean).join(", ") || "—",
     ],
+    ["Tabac", labelOf(SMOKING_OPTIONS, data.smoking)],
+    ["Alcool", labelOf(DRINKING_OPTIONS, data.drinking)],
+    ["Sport", labelOf(GYM_OPTIONS, data.gymHabit)],
     ["Centres d’intérêt", `${data.interestIds.length} sélectionnés`],
   ];
   return (
