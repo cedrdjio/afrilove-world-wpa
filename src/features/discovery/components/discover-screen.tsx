@@ -5,9 +5,11 @@ import { SlidersHorizontal, Menu } from "lucide-react";
 
 import { IconButton } from "@/components/ui/icon-button";
 import { ROUTES } from "@/constants/routes";
+import { useAuth } from "@/providers/auth-provider";
 
 import { MatchOverlay } from "./match-overlay";
 import { SwipeDeck } from "./swipe-deck";
+import { RealSwipeDeck } from "./real-swipe-deck";
 
 /**
  * Écran de découverte immersif (« 04 »). Fond nuit constant (indépendant du
@@ -15,6 +17,7 @@ import { SwipeDeck } from "./swipe-deck";
  * deck de swipe et overlay de match.
  */
 export function DiscoverScreen() {
+  const { isAuthenticated } = useAuth();
   return (
     <div
       className="dark relative flex min-h-dvh flex-col overflow-hidden px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-28 text-white"
@@ -44,10 +47,10 @@ export function DiscoverScreen() {
       </header>
 
       <div className="relative z-10 mt-5 flex min-h-0 flex-1 flex-col">
-        <SwipeDeck />
+        {isAuthenticated ? <RealSwipeDeck /> : <SwipeDeck />}
       </div>
 
-      <MatchOverlay />
+      {!isAuthenticated && <MatchOverlay />}
     </div>
   );
 }

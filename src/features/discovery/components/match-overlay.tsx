@@ -7,38 +7,107 @@ import { Heart, Send, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { DEMO_ME } from "@/features/profiles/data";
-import type { Profile } from "@/features/profiles/types";
+import { initials } from "@/utils/format";
 import { useDiscoveryStore } from "../store";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
 
+/** Ce qu'il faut afficher pour célébrer un match, indépendant de la source. */
+export interface MatchView {
+  /** Cible du bouton « Envoyer un message » (match_id réel ou id de démo). */
+  conversationId: string;
+  firstName: string;
+  photo: string | null;
+}
+
 /**
- * Overlay « C'est un match ! » (« 06 Match »). Plein écran, dégradé nuit,
- * photos des deux profils qui se rejoignent autour d'un cœur battant.
+ * Overlay « C'est un match ! » (« 06 Match ») — présentation pure. Plein écran,
+ * dégradé nuit, photos des deux profils qui se rejoignent autour d'un cœur.
+ */
+export function MatchOverlayView({
+  match,
+  myPhoto,
+  onClose,
+}: {
+  match: MatchView | null;
+  myPhoto: string | null;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {match && (
+        <MatchContent match={match} myPhoto={myPhoto} onClose={onClose} />
+      )}
+    </AnimatePresence>
+  );
+}
+
+/**
+ * Overlay de match du deck de démo — lit le store Zustand local.
  */
 export function MatchOverlay() {
   const matched = useDiscoveryStore((s) => s.matched);
   const clearMatch = useDiscoveryStore((s) => s.clearMatch);
 
   return (
-    <AnimatePresence>
-      {matched && <MatchContent profile={matched} onClose={clearMatch} />}
-    </AnimatePresence>
+    <MatchOverlayView
+      match={
+        matched
+          ? {
+              conversationId: matched.id,
+              firstName: matched.firstName,
+              photo: matched.photos[0],
+            }
+          : null
+      }
+      myPhoto={DEMO_ME.avatar}
+      onClose={clearMatch}
+    />
+  );
+}
+
+function RoundPhoto({
+  src,
+  alt,
+  className,
+}: {
+  src: string | null;
+  alt: string;
+  className: string;
+}) {
+  return (
+    <div className={className}>
+      {src ? (
+        <Image
+          src={src}
+          alt={alt}
+          width={144}
+          height={144}
+          className="size-full object-cover"
+        />
+      ) : (
+        <span className="gradient-signature grid size-full place-items-center text-4xl font-extrabold text-white">
+          {initials(alt)}
+        </span>
+      )}
+    </div>
   );
 }
 
 function MatchContent({
-  profile,
+  match,
+  myPhoto,
   onClose,
 }: {
-  profile: Profile;
+  match: MatchView;
+  myPhoto: string | null;
   onClose: () => void;
 }) {
   return (
     <m.div
       role="dialog"
       aria-modal="true"
-      aria-label={`C'est un match avec ${profile.firstName}`}
+      aria-label={`C'est un match avec ${match.firstName}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -79,28 +148,22 @@ function MatchContent({
             initial={{ x: 60, rotate: 0, opacity: 0 }}
             animate={{ x: 26, rotate: -6, opacity: 1 }}
             transition={{ ease: EASE, duration: 0.6, delay: 0.1 }}
-            className="size-36 overflow-hidden rounded-full border-4 border-white/90 shadow-2xl"
           >
-            <Image
-              src={profile.photos[0]}
-              alt={profile.firstName}
-              width={144}
-              height={144}
-              className="size-full object-cover"
+            <RoundPhoto
+              src={match.photo}
+              alt={match.firstName}
+              className="size-36 overflow-hidden rounded-full border-4 border-white/90 shadow-2xl"
             />
           </m.div>
           <m.div
             initial={{ x: -60, rotate: 0, opacity: 0 }}
             animate={{ x: -26, rotate: 6, opacity: 1 }}
             transition={{ ease: EASE, duration: 0.6, delay: 0.1 }}
-            className="size-36 overflow-hidden rounded-full border-4 border-white/90 shadow-2xl"
           >
-            <Image
-              src={DEMO_ME.avatar}
+            <RoundPhoto
+              src={myPhoto}
               alt="Vous"
-              width={144}
-              height={144}
-              className="size-full object-cover"
+              className="size-36 overflow-hidden rounded-full border-4 border-white/90 shadow-2xl"
             />
           </m.div>
           <m.span
@@ -113,16 +176,15 @@ function MatchContent({
         </div>
 
         <p className="text-base leading-relaxed text-white/85">
-          Toi et{" "}
-          <span className="font-bold text-white">{profile.firstName}</span> vous
-          êtes plu.
+          Toi et <span className="font-bold text-white">{match.firstName}</span>{" "}
+          vous êtes plu.
           <br />
           Lancez la conversation.
         </p>
 
         <div className="mt-8 flex w-full max-w-xs flex-col gap-3">
           <Link
-            href={`${ROUTES.messages}/${profile.id}`}
+            href={`${ROUTES.messages}/${match.conversationId}`}
             onClick={onClose}
             className="font-display text-primary flex h-14 items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-white font-bold shadow-xl active:scale-[0.98]"
           >

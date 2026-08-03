@@ -12,11 +12,11 @@ import {
 import { Heart, Sparkles, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
-import type { Profile } from "@/features/profiles/types";
 import { useHaptics } from "@/hooks/use-haptics";
 import { cn } from "@/lib/utils";
 
 import { useDiscoveryStore, type SwipeDirection } from "../store";
+import { profileToCard, type DeckCardModel } from "../card";
 import { ProfileCard } from "./profile-card";
 
 const SWIPE_THRESHOLD = 110;
@@ -35,10 +35,10 @@ const cardVariants: Variants = {
 
 /** Carte du dessus : draggable, pilote le like/pass selon la direction. */
 function TopCard({
-  profile,
+  card,
   onDecide,
 }: {
-  profile: Profile;
+  card: DeckCardModel;
   onDecide: (direction: SwipeDirection) => void;
 }) {
   const x = useMotionValue(0);
@@ -60,8 +60,8 @@ function TopCard({
       }}
     >
       <Link
-        href={`${ROUTES.discover}/${profile.id}`}
-        aria-label={`Voir le profil de ${profile.firstName}`}
+        href={`${ROUTES.discover}/${card.id}`}
+        aria-label={`Voir le profil de ${card.firstName}`}
         className="block size-full"
         draggable={false}
         onClick={(e) => {
@@ -69,7 +69,7 @@ function TopCard({
           if (Math.abs(x.get()) > 6) e.preventDefault();
         }}
       >
-        <ProfileCard profile={profile} priority />
+        <ProfileCard card={card} priority />
       </Link>
 
       <m.div
@@ -89,13 +89,120 @@ function TopCard({
 }
 
 /**
- * Deck de découverte : pile de cartes avec drag, boutons d'action et effet de
- * profondeur. Ne rend que 2 cartes (perf), la suivante en léger retrait.
+ * Deck de découverte — présentation pure (pile de cartes, drag, boutons,
+ * profondeur). Ne rend que 2 cartes (perf). Réutilisé par le deck de démo et
+ * le deck réel (données Supabase).
+ */
+export function SwipeDeckView({
+  top,
+  next,
+  lastDirection,
+  canRewind,
+  loading = false,
+  onDecide,
+  onRewind,
+  emptyTitle,
+  emptySubtitle,
+  emptyActionLabel,
+  onEmptyAction,
+}: {
+  top?: DeckCardModel;
+  next?: DeckCardModel;
+  lastDirection: SwipeDirection;
+  canRewind: boolean;
+  loading?: boolean;
+  onDecide: (direction: SwipeDirection) => void;
+  onRewind: () => void;
+  emptyTitle: string;
+  emptySubtitle: string;
+  emptyActionLabel: string;
+  onEmptyAction: () => void;
+}) {
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="relative min-h-0 flex-1">
+        {loading && !top && (
+          <div className="size-full animate-pulse rounded-[var(--radius-xl)] border border-white/10 bg-white/5" />
+        )}
+
+        {!loading && !top && (
+          <EmptyState
+            title={emptyTitle}
+            subtitle={emptySubtitle}
+            actionLabel={emptyActionLabel}
+            onAction={onEmptyAction}
+          />
+        )}
+
+        {next && (
+          <div className="absolute inset-0 scale-[0.94] opacity-70">
+            <ProfileCard card={next} />
+          </div>
+        )}
+
+        <AnimatePresence custom={lastDirection}>
+          {top && (
+            <m.div
+              key={top.id}
+              className="absolute inset-0"
+              variants={cardVariants}
+              custom={lastDirection}
+              initial="enter"
+              animate="center"
+              exit="exit"
+            >
+              <TopCard card={top} onDecide={onDecide} />
+            </m.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {top && (
+        <div className="z-20 flex items-center justify-center gap-4 py-5">
+          <ActionButton
+            label="Revenir en arrière"
+            onClick={onRewind}
+            disabled={!canRewind}
+            className="text-warning size-12"
+          >
+            <RewindIcon />
+          </ActionButton>
+          <ActionButton
+            label="Passer"
+            onClick={() => onDecide("pass")}
+            className="size-16 text-white"
+          >
+            <X className="size-7" strokeWidth={2.4} aria-hidden />
+          </ActionButton>
+          <ActionButton
+            label="J'aime"
+            onClick={() => onDecide("like")}
+            className="gradient-signature shadow-brand size-[4.75rem] scale-110 border-white/40 text-white"
+          >
+            <Heart className="size-9 fill-current" aria-hidden />
+          </ActionButton>
+          <ActionButton
+            label="Super like"
+            onClick={() => onDecide("super")}
+            className="text-brand-300 size-16"
+          >
+            <Sparkles className="size-6 fill-current" aria-hidden />
+          </ActionButton>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Deck de démonstration (aperçu design non authentifié) — piloté par le store
+ * Zustand local. Le deck réel (`RealSwipeDeck`) sert les membres connectés.
  */
 export function SwipeDeck() {
   const queue = useDiscoveryStore((s) => s.queue);
   const swipe = useDiscoveryStore((s) => s.swipe);
   const rewind = useDiscoveryStore((s) => s.rewind);
+  const reset = useDiscoveryStore((s) => s.reset);
   const canRewind = useDiscoveryStore((s) => s.history.length > 0);
   const lastDirection = useDiscoveryStore(
     (s) => s.history[0]?.direction ?? "like",
@@ -113,69 +220,18 @@ export function SwipeDeck() {
   const [top, next] = queue;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className="relative min-h-0 flex-1">
-        {queue.length === 0 && (
-          <EmptyState onReset={() => useDiscoveryStore.getState().reset()} />
-        )}
-
-        {next && (
-          <div className="absolute inset-0 scale-[0.94] opacity-70">
-            <ProfileCard profile={next} />
-          </div>
-        )}
-
-        <AnimatePresence custom={lastDirection}>
-          {top && (
-            <m.div
-              key={top.id}
-              className="absolute inset-0"
-              variants={cardVariants}
-              custom={lastDirection}
-              initial="enter"
-              animate="center"
-              exit="exit"
-            >
-              <TopCard profile={top} onDecide={decide} />
-            </m.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      {top && (
-        <div className="z-20 flex items-center justify-center gap-4 py-5">
-          <ActionButton
-            label="Revenir en arrière"
-            onClick={() => rewind()}
-            disabled={!canRewind}
-            className="text-warning size-12"
-          >
-            <RewindIcon />
-          </ActionButton>
-          <ActionButton
-            label="Passer"
-            onClick={() => decide("pass")}
-            className="size-16 text-white"
-          >
-            <X className="size-7" strokeWidth={2.4} aria-hidden />
-          </ActionButton>
-          <ActionButton
-            label="J'aime"
-            onClick={() => decide("like")}
-            className="gradient-signature shadow-brand size-[4.75rem] scale-110 border-white/40 text-white"
-          >
-            <Heart className="size-9 fill-current" aria-hidden />
-          </ActionButton>
-          <ActionButton
-            label="Super like"
-            onClick={() => decide("super")}
-            className="text-brand-300 size-16"
-          >
-            <Sparkles className="size-6 fill-current" aria-hidden />
-          </ActionButton>
-        </div>
-      )}
-    </div>
+    <SwipeDeckView
+      top={top ? profileToCard(top) : undefined}
+      next={next ? profileToCard(next) : undefined}
+      lastDirection={lastDirection}
+      canRewind={canRewind}
+      onDecide={decide}
+      onRewind={rewind}
+      emptyTitle="Plus de profils pour l'instant"
+      emptySubtitle="Revenez plus tard ou élargissez vos filtres."
+      emptyActionLabel="Recommencer la démo"
+      onEmptyAction={reset}
+    />
   );
 }
 
@@ -224,23 +280,31 @@ function RewindIcon() {
   );
 }
 
-function EmptyState({ onReset }: { onReset: () => void }) {
+function EmptyState({
+  title,
+  subtitle,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  subtitle: string;
+  actionLabel: string;
+  onAction: () => void;
+}) {
   return (
     <div className="grid size-full place-items-center rounded-[var(--radius-xl)] border border-white/15 bg-white/5 p-8 text-center">
       <div>
         <Heart className="text-brand-300 mx-auto size-12" aria-hidden />
         <h2 className="font-display mt-4 text-xl font-bold text-white">
-          Plus de profils pour l&apos;instant
+          {title}
         </h2>
-        <p className="mt-2 text-sm text-white/70">
-          Revenez plus tard ou élargissez vos filtres.
-        </p>
+        <p className="mt-2 text-sm text-white/70">{subtitle}</p>
         <button
           type="button"
-          onClick={onReset}
+          onClick={onAction}
           className="mt-6 rounded-[var(--radius-pill)] bg-white/15 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-lg"
         >
-          Recommencer la démo
+          {actionLabel}
         </button>
       </div>
     </div>

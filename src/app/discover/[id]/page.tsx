@@ -1,9 +1,11 @@
-import { notFound } from "next/navigation";
+import { DEMO_PROFILES } from "@/features/profiles/data";
+import { ProfileDetailContainer } from "@/features/discovery/components/profile-detail-container";
 
-import { DEMO_PROFILES, findProfile } from "@/features/profiles/data";
-import { ProfileDetail } from "@/features/discovery/components/profile-detail";
-
-/** Pré-génère les fiches profils connues (démo) pour un rendu instantané. */
+/**
+ * Les fiches de démo sont pré-générées (aperçu design) ; les vrais profils
+ * (UUID) sont rendus à la demande — le conteneur client bascule sur
+ * `get_public_profile` dès qu'une session existe.
+ */
 export function generateStaticParams() {
   return DEMO_PROFILES.map((p) => ({ id: p.id }));
 }
@@ -14,7 +16,5 @@ export default async function ProfileDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const profile = findProfile(id);
-  if (!profile) notFound();
-  return <ProfileDetail profile={profile} />;
+  return <ProfileDetailContainer id={id} />;
 }

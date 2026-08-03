@@ -1,8 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { m } from "framer-motion";
 import {
   ChevronLeft,
@@ -16,39 +14,66 @@ import {
 import { VerifiedBadge } from "@/components/brand/verified-badge";
 import { Chip } from "@/components/ui/chip";
 import { IconButton } from "@/components/ui/icon-button";
-import { ROUTES } from "@/constants/routes";
-import type { Profile } from "@/features/profiles/types";
-import { useHaptics } from "@/hooks/use-haptics";
+import { initials } from "@/utils/format";
+
+/** Modèle d'affichage de la fiche (démo ou données réelles). */
+export interface ProfileDetailView {
+  id: string;
+  firstName: string;
+  age: number;
+  heroPhoto: string | null;
+  verified: boolean;
+  locationLine: string;
+  bio: string | null;
+  interests: string[];
+  stats: { value: string; label: string }[];
+}
 
 /**
- * Fiche profil détaillée (« 05 »). En-tête photo, identité, statistiques,
- * bio et centres d'intérêt sur cartes de verre, barre d'action ancrée en bas.
+ * Fiche profil détaillée (« 05 ») — présentation pure. En-tête photo, identité,
+ * statistiques, bio et centres d'intérêt sur cartes de verre, barre d'action
+ * ancrée en bas. Les actions (pass / like / message) sont fournies par le parent.
  */
-export function ProfileDetail({ profile }: { profile: Profile }) {
-  const router = useRouter();
-  const haptic = useHaptics();
-
+export function ProfileDetail({
+  view,
+  onBack,
+  onPass,
+  onLike,
+  onMessage,
+  messageLabel = "Envoyer un message",
+}: {
+  view: ProfileDetailView;
+  onBack: () => void;
+  onPass: () => void;
+  onLike: () => void;
+  onMessage: () => void;
+  messageLabel?: string;
+}) {
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-md pb-28">
       {/* En-tête photo */}
       <div className="relative h-[45vh] max-h-[400px] min-h-[320px] w-full overflow-hidden">
-        <Image
-          src={profile.photos[0]}
-          alt={`Photo de ${profile.firstName}`}
-          fill
-          priority
-          sizes="(max-width: 448px) 100vw, 400px"
-          className="object-cover"
-          style={{ objectPosition: "50% 26%" }}
-        />
+        {view.heroPhoto ? (
+          <Image
+            src={view.heroPhoto}
+            alt={`Photo de ${view.firstName}`}
+            fill
+            priority
+            sizes="(max-width: 448px) 100vw, 400px"
+            className="object-cover"
+            style={{ objectPosition: "50% 26%" }}
+          />
+        ) : (
+          <div className="gradient-signature grid size-full place-items-center">
+            <span className="font-display text-8xl font-extrabold text-white/90">
+              {initials(view.firstName)}
+            </span>
+          </div>
+        )}
         <div className="from-brand-950/35 to-brand-950/60 absolute inset-0 bg-gradient-to-b via-transparent" />
 
         <div className="absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] flex items-center justify-between px-5">
-          <IconButton
-            tone="glassDark"
-            aria-label="Retour"
-            onClick={() => router.back()}
-          >
+          <IconButton tone="glassDark" aria-label="Retour" onClick={onBack}>
             <ChevronLeft className="size-5" aria-hidden />
           </IconButton>
           <IconButton tone="glassDark" aria-label="Options">
@@ -59,14 +84,16 @@ export function ProfileDetail({ profile }: { profile: Profile }) {
         <div className="absolute inset-x-5 bottom-4 text-white">
           <div className="flex items-center gap-2">
             <h1 className="font-display text-3xl font-extrabold drop-shadow-lg">
-              {profile.firstName}, {profile.age}
+              {view.firstName}, {view.age}
             </h1>
-            {profile.verified && <VerifiedBadge size={22} />}
+            {view.verified && <VerifiedBadge size={22} />}
           </div>
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90 drop-shadow">
-            <MapPin className="size-4" aria-hidden />
-            {profile.origin} · vit à {profile.city} · à {profile.distanceKm} km
-          </p>
+          {view.locationLine && (
+            <p className="mt-1 flex items-center gap-1.5 text-sm text-white/90 drop-shadow">
+              <MapPin className="size-4" aria-hidden />
+              {view.locationLine}
+            </p>
+          )}
         </div>
       </div>
 
@@ -77,30 +104,37 @@ export function ProfileDetail({ profile }: { profile: Profile }) {
         transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
         className="space-y-4 px-5 pt-5"
       >
-        <div className="flex gap-3">
-          <Stat value={`${profile.compatibility}%`} label="compatibilité" />
-          <Stat value={String(profile.mutualFriends)} label="amis en commun" />
-        </div>
-
-        <section className="glass rounded-[var(--radius-lg)] p-4">
-          <h2 className="font-display text-base font-bold">À propos</h2>
-          <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-            {profile.bio}
-          </p>
-        </section>
-
-        <section className="glass rounded-[var(--radius-lg)] p-4">
-          <h2 className="font-display text-base font-bold">
-            Centres d&apos;intérêt
-          </h2>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {profile.interests.map((interest) => (
-              <Chip key={interest} tone="soft">
-                {interest}
-              </Chip>
+        {view.stats.length > 0 && (
+          <div className="flex gap-3">
+            {view.stats.map((s) => (
+              <Stat key={s.label} value={s.value} label={s.label} />
             ))}
           </div>
-        </section>
+        )}
+
+        {view.bio && (
+          <section className="glass rounded-[var(--radius-lg)] p-4">
+            <h2 className="font-display text-base font-bold">À propos</h2>
+            <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+              {view.bio}
+            </p>
+          </section>
+        )}
+
+        {view.interests.length > 0 && (
+          <section className="glass rounded-[var(--radius-lg)] p-4">
+            <h2 className="font-display text-base font-bold">
+              Centres d&apos;intérêt
+            </h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {view.interests.map((interest) => (
+                <Chip key={interest} tone="soft">
+                  {interest}
+                </Chip>
+              ))}
+            </div>
+          </section>
+        )}
       </m.div>
 
       {/* Barre d'action */}
@@ -112,29 +146,24 @@ export function ProfileDetail({ profile }: { profile: Profile }) {
             size="lg"
             aria-label="Passer"
             className="text-subtle-foreground"
-            onClick={() => {
-              haptic("light");
-              router.push(ROUTES.discover);
-            }}
+            onClick={onPass}
           >
             <X className="size-6" strokeWidth={2.4} aria-hidden />
           </IconButton>
-          <Link
-            href={`${ROUTES.messages}/${profile.id}`}
+          <button
+            type="button"
+            onClick={onMessage}
             className="gradient-signature shadow-brand font-display flex h-14 flex-1 items-center justify-center gap-2 rounded-[var(--radius-pill)] font-bold text-white active:scale-[0.98]"
           >
             <MessageCircle className="size-5" aria-hidden />
-            Envoyer un message
-          </Link>
+            {messageLabel}
+          </button>
           <IconButton
             tone="gradient"
             shape="round"
             size="lg"
             aria-label="J'aime"
-            onClick={() => {
-              haptic("success");
-              router.push(ROUTES.discover);
-            }}
+            onClick={onLike}
           >
             <Heart className="size-6 fill-current" aria-hidden />
           </IconButton>

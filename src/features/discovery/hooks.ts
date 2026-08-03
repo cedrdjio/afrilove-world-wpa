@@ -94,6 +94,16 @@ export function useDiscoveryCountries() {
   });
 }
 
+export function usePublicProfile(id: string) {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["public-profile", id],
+    queryFn: () => discoveryService.fetchPublicProfile(id),
+    enabled: isAuthenticated && Boolean(id),
+    staleTime: 60_000,
+  });
+}
+
 export function useSwipe() {
   const { user } = useAuth();
   const queryClient = useQueryClient();

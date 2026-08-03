@@ -102,7 +102,7 @@ async function swipe(
   swiperId: string,
   targetId: string,
   action: SwipeAction,
-): Promise<{ isMatch: boolean }> {
+): Promise<{ isMatch: boolean; matchId: string | null }> {
   const supabase = db();
   const { error } = await supabase
     .from("swipes")
@@ -112,7 +112,7 @@ async function swipe(
     );
   if (error) throw error;
 
-  if (action === "pass") return { isMatch: false };
+  if (action === "pass") return { isMatch: false, matchId: null };
 
   const [a, b] =
     swiperId < targetId ? [swiperId, targetId] : [targetId, swiperId];
@@ -124,7 +124,66 @@ async function swipe(
     .maybeSingle();
   if (matchError) throw matchError;
 
-  return { isMatch: Boolean(match) };
+  return { isMatch: Boolean(match), matchId: match?.id ?? null };
+}
+
+/** Fiche publique détaillée d'un profil (« 05 »), via `get_public_profile`. */
+export interface PublicProfileView {
+  id: string;
+  firstName: string;
+  age: number;
+  photos: string[];
+  verified: boolean;
+  city: string | null;
+  country: string | null;
+  distanceKm: number | null;
+  bio: string | null;
+  profession: string | null;
+  interests: string[];
+  lastActiveAt: string | null;
+}
+
+async function fetchPublicProfile(
+  id: string,
+): Promise<PublicProfileView | null> {
+  const supabase = db();
+  const { data, error } = await supabase.rpc("get_public_profile", {
+    p_profile_id: id,
+  });
+  if (error) throw error;
+  const row = data?.[0];
+  if (!row) return null;
+
+  let interests: string[] = [];
+  const ids = row.interest_ids ?? [];
+  if (ids.length) {
+    const { data: rows } = await supabase
+      .from("interests")
+      .select("id, label")
+      .in("id", ids);
+    interests = (rows ?? []).map((r) => r.label);
+  }
+
+  return {
+    id: row.id,
+    firstName: row.first_name ?? "",
+    age: row.age,
+    photos: row.photo_urls ?? [],
+    verified: row.is_verified,
+    city: row.city,
+    country: row.country,
+    distanceKm: row.distance_km,
+    bio: row.bio,
+    profession: row.profession,
+    interests,
+    lastActiveAt: row.last_active_at ?? null,
+  };
+}
+
+/** Journalise une vue de profil (alimente les stats « vues »). */
+async function recordView(id: string): Promise<void> {
+  const { error } = await db().rpc("record_profile_view", { p_profile_id: id });
+  if (error) throw error;
 }
 
 /** Recherche libre (nom / ville / pays) sur tout le vivier découvrable. */
@@ -142,5 +201,7 @@ export const discoveryService = {
   countProfiles,
   fetchCountries,
   swipe,
+  fetchPublicProfile,
+  recordView,
   searchByText,
 };
