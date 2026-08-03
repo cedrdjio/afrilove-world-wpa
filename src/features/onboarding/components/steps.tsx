@@ -62,7 +62,6 @@ function TextField({
   icon: Icon,
   optional,
   maxLength,
-  autoFocus,
   onChange,
 }: {
   id: string;
@@ -72,7 +71,6 @@ function TextField({
   icon?: typeof Briefcase;
   optional?: boolean;
   maxLength?: number;
-  autoFocus?: boolean;
   onChange: (v: string) => void;
 }) {
   return (
@@ -98,7 +96,6 @@ function TextField({
           value={value}
           placeholder={placeholder}
           maxLength={maxLength}
-          autoFocus={autoFocus}
           onChange={(e) => onChange(e.target.value)}
           className={Icon ? "pl-10" : undefined}
         />
@@ -198,7 +195,6 @@ export function NameStep({ data, patch }: StepProps) {
         value={data.displayName}
         placeholder="Votre prénom ou pseudo"
         maxLength={40}
-        autoFocus
         onChange={(v) => patch({ displayName: v })}
       />
       <TextField
@@ -244,25 +240,53 @@ export function BirthDateStep({ data, patch }: StepProps) {
   const maxYear = now.year - 18;
   const minYear = now.year - 100;
 
+  // État LOCAL des trois parties. Indispensable : chaque sélection partielle
+  // (jour seul, puis mois…) doit PERSISTER, alors que `birthDate` reste null
+  // tant que la date n'est pas complète. Sans ça, le select se réinitialise
+  // dès qu'on choisit une valeur — « ça ne passe pas ».
   const parsed = data.birthDate?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const y = parsed ? Number(parsed[1]) : null;
-  const mo = parsed ? Number(parsed[2]) : null;
-  const d = parsed ? Number(parsed[3]) : null;
+  const [day, setDay] = useState<number | null>(
+    parsed ? Number(parsed[3]) : null,
+  );
+  const [month, setMonth] = useState<number | null>(
+    parsed ? Number(parsed[2]) : null,
+  );
+  const [year, setYear] = useState<number | null>(
+    parsed ? Number(parsed[1]) : null,
+  );
 
-  const commit = (
-    nextD: number | null,
-    nextM: number | null,
-    nextY: number | null,
-  ) => {
-    if (!nextD || !nextM || !nextY) {
+  // Recompose birthDate (ou null si incomplet) à chaque changement de partie.
+  const sync = (d: number | null, m: number | null, y: number | null) => {
+    if (!d || !m || !y) {
       patch({ birthDate: null });
       return;
     }
-    const clampedDay = Math.min(nextD, daysInMonth(nextY, nextM));
-    const iso = `${nextY}-${String(nextM).padStart(2, "0")}-${String(
-      clampedDay,
-    ).padStart(2, "0")}`;
-    patch({ birthDate: iso });
+    const clampedDay = Math.min(d, daysInMonth(y, m));
+    patch({
+      birthDate: `${y}-${String(m).padStart(2, "0")}-${String(
+        clampedDay,
+      ).padStart(2, "0")}`,
+    });
+  };
+
+  const changeDay = (v: number | null) => {
+    setDay(v);
+    sync(v, month, year);
+  };
+  const changeMonth = (v: number | null) => {
+    // Réajuste le jour s'il dépasse le nouveau mois (ex. 31 → février).
+    const maxD = v && year ? daysInMonth(year, v) : 31;
+    const d = day && day > maxD ? maxD : day;
+    setMonth(v);
+    if (d !== day) setDay(d);
+    sync(d, v, year);
+  };
+  const changeYear = (v: number | null) => {
+    const maxD = month && v ? daysInMonth(v, month) : 31;
+    const d = day && day > maxD ? maxD : day;
+    setYear(v);
+    if (d !== day) setDay(d);
+    sync(d, month, v);
   };
 
   const years = Array.from(
@@ -270,17 +294,19 @@ export function BirthDateStep({ data, patch }: StepProps) {
     (_, i) => maxYear - i,
   );
   const days = Array.from(
-    { length: daysInMonth(y ?? 2000, mo ?? 1) },
+    { length: daysInMonth(year ?? 2000, month ?? 1) },
     (_, i) => i + 1,
   );
 
   const age =
-    y && mo && d
-      ? Math.floor((now.ts - new Date(y, mo - 1, d).getTime()) / 3.15576e10)
+    day && month && year
+      ? Math.floor(
+          (now.ts - new Date(year, month - 1, day).getTime()) / 3.15576e10,
+        )
       : null;
 
   const tile =
-    "h-16 flex-1 rounded-[var(--radius-md)] border border-border bg-card text-center text-lg font-bold text-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none";
+    "h-16 min-w-0 flex-1 rounded-[var(--radius-md)] border border-border bg-card text-center text-lg font-bold text-foreground focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:outline-none";
 
   return (
     <div className="flex flex-col gap-3">
@@ -288,8 +314,8 @@ export function BirthDateStep({ data, patch }: StepProps) {
         <select
           aria-label="Jour"
           className={tile}
-          value={d ?? ""}
-          onChange={(e) => commit(Number(e.target.value) || null, mo, y)}
+          value={day ?? ""}
+          onChange={(e) => changeDay(Number(e.target.value) || null)}
         >
           <option value="">Jour</option>
           {days.map((n) => (
@@ -301,8 +327,8 @@ export function BirthDateStep({ data, patch }: StepProps) {
         <select
           aria-label="Mois"
           className={tile}
-          value={mo ?? ""}
-          onChange={(e) => commit(d, Number(e.target.value) || null, y)}
+          value={month ?? ""}
+          onChange={(e) => changeMonth(Number(e.target.value) || null)}
         >
           <option value="">Mois</option>
           {MONTHS.map((name, i) => (
@@ -314,8 +340,8 @@ export function BirthDateStep({ data, patch }: StepProps) {
         <select
           aria-label="Année"
           className={tile}
-          value={y ?? ""}
-          onChange={(e) => commit(d, mo, Number(e.target.value) || null)}
+          value={year ?? ""}
+          onChange={(e) => changeYear(Number(e.target.value) || null)}
         >
           <option value="">Année</option>
           {years.map((n) => (
@@ -544,7 +570,6 @@ export function ProfessionStep({ data, patch }: StepProps) {
       value={data.profession}
       placeholder="Votre métier"
       maxLength={60}
-      autoFocus
       onChange={(v) => patch({ profession: v })}
     />
   );

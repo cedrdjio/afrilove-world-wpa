@@ -260,7 +260,7 @@ export function OnboardingWizard() {
     (current.key === "goal" && goalsQuery.isPending);
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-4 pb-6">
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col overflow-x-hidden px-6 pt-4 pb-6">
       <header className="flex items-center gap-3">
         <button
           type="button"
@@ -283,7 +283,7 @@ export function OnboardingWizard() {
           </p>
         ) : null}
 
-        <div className="-mx-1 mt-7 flex-1 overflow-y-auto px-1">
+        <div className="mt-7 flex-1 overflow-x-hidden overflow-y-auto px-1">
           <AnimatePresence mode="wait">
             <m.div
               key={current.key}
