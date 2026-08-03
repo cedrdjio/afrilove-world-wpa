@@ -1,10 +1,13 @@
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
+import { initials } from "@/utils/format";
 
 /**
  * Avatar photo (rond ou arrondi) avec pastille de présence optionnelle et
  * anneau dégradé « nouveau match ». Utilise `next/image` pour l'optimisation.
+ * Quand `src` est absent (photo non renseignée), affiche les initiales sur un
+ * dégradé signature.
  */
 export function Avatar({
   src,
@@ -15,7 +18,7 @@ export function Avatar({
   online,
   className,
 }: {
-  src: string;
+  src: string | null | undefined;
   alt: string;
   size?: number;
   rounded?: "full" | "lg";
@@ -26,7 +29,7 @@ export function Avatar({
   const radius =
     rounded === "full" ? "rounded-full" : "rounded-[var(--radius-md)]";
 
-  const img = (
+  const img = src ? (
     <Image
       src={src}
       alt={alt}
@@ -35,6 +38,17 @@ export function Avatar({
       className={cn("size-full object-cover", radius)}
       style={{ objectPosition: "50% 20%" }}
     />
+  ) : (
+    <span
+      className={cn(
+        "gradient-signature grid size-full place-items-center font-bold text-white",
+        radius,
+      )}
+      style={{ fontSize: Math.max(11, size * 0.36) }}
+      aria-label={alt}
+    >
+      {initials(alt)}
+    </span>
   );
 
   return (

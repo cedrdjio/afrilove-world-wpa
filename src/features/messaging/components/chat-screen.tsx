@@ -8,42 +8,59 @@ import { ChevronLeft, Phone, Plus, Send, Video } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
 import { ROUTES } from "@/constants/routes";
-import type { Conversation, ChatMessage } from "@/features/messaging/types";
 import { useHaptics } from "@/hooks/use-haptics";
 import { cn } from "@/lib/utils";
 import { formatClockTime } from "@/utils/format";
 
+export interface ChatBubble {
+  id: string;
+  mine: boolean;
+  body: string;
+  sentAt: string;
+}
+
+export interface ChatPartner {
+  id: string;
+  firstName: string;
+  avatarUrl: string | null;
+  online: boolean;
+}
+
 /**
- * Fil de discussion (« 07 Messagerie »). En-tête interlocuteur (présence),
- * bulles alignées, indicateur de saisie, composeur avec envoi optimiste.
- * L'envoi réel passera par une Edge Function + Supabase Realtime.
+ * Fil de discussion (« 07 Messagerie ») — présentation pure. En-tête
+ * interlocuteur (présence), bulles alignées, indicateur de saisie, composeur.
+ * Les données (réelles via Supabase Realtime, ou démo) sont fournies par le
+ * conteneur parent ; l'envoi passe par `onSend`.
  */
-export function ChatScreen({ conversation }: { conversation: Conversation }) {
+export function ChatScreen({
+  partner,
+  messages,
+  matchTimeIso,
+  typing = false,
+  onSend,
+  disabled = false,
+}: {
+  partner: ChatPartner;
+  messages: ChatBubble[];
+  matchTimeIso: string | null;
+  typing?: boolean;
+  onSend: (body: string) => void;
+  disabled?: boolean;
+}) {
   const router = useRouter();
   const haptic = useHaptics();
-  const [messages, setMessages] = useState<ChatMessage[]>(
-    conversation.messages,
-  );
   const [draft, setDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
-  }, [messages.length]);
+  }, [messages.length, typing]);
 
   const send = () => {
     const body = draft.trim();
-    if (!body) return;
+    if (!body || disabled) return;
     haptic("light");
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: `local-${Date.now()}`,
-        authorId: "me",
-        body,
-        sentAt: new Date().toISOString(),
-      },
-    ]);
+    onSend(body);
     setDraft("");
   };
 
@@ -60,28 +77,26 @@ export function ChatScreen({ conversation }: { conversation: Conversation }) {
           <ChevronLeft className="size-6" aria-hidden />
         </IconButton>
         <Link
-          href={`${ROUTES.discover}/${conversation.peer.id}`}
+          href={`${ROUTES.discover}/${partner.id}`}
           className="flex min-w-0 flex-1 items-center gap-3"
         >
           <Avatar
-            src={conversation.peer.photos[0]}
-            alt={conversation.peer.firstName}
+            src={partner.avatarUrl}
+            alt={partner.firstName}
             size={44}
-            online={conversation.peer.online}
+            online={partner.online}
           />
           <div className="min-w-0">
             <div className="font-display truncate font-bold">
-              {conversation.peer.firstName}
+              {partner.firstName}
             </div>
             <div
               className={cn(
                 "text-xs font-semibold",
-                conversation.peer.online
-                  ? "text-success"
-                  : "text-subtle-foreground",
+                partner.online ? "text-success" : "text-subtle-foreground",
               )}
             >
-              {conversation.peer.online ? "En ligne" : "Hors ligne"}
+              {partner.online ? "En ligne" : "Hors ligne"}
             </div>
           </div>
         </Link>
@@ -105,29 +120,25 @@ export function ChatScreen({ conversation }: { conversation: Conversation }) {
 
       {/* Fil */}
       <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-5 py-5">
-        <p className="text-subtle-foreground text-center text-xs font-semibold">
-          MATCH ·{" "}
-          {formatClockTime(
-            conversation.messages[0]?.sentAt ?? conversation.lastAt,
-          )}
-        </p>
-        {messages.map((msg) => {
-          const mine = msg.authorId === "me";
-          return (
-            <div
-              key={msg.id}
-              className={cn(
-                "max-w-[78%] px-4 py-2.5 text-sm leading-snug",
-                mine
-                  ? "gradient-signature shadow-brand self-end rounded-[22px_22px_7px_22px] text-white"
-                  : "glass text-foreground self-start rounded-[22px_22px_22px_7px]",
-              )}
-            >
-              {msg.body}
-            </div>
-          );
-        })}
-        {conversation.peer.online && (
+        {matchTimeIso && (
+          <p className="text-subtle-foreground text-center text-xs font-semibold">
+            MATCH · {formatClockTime(matchTimeIso)}
+          </p>
+        )}
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={cn(
+              "max-w-[78%] px-4 py-2.5 text-sm leading-snug",
+              msg.mine
+                ? "gradient-signature shadow-brand self-end rounded-[22px_22px_7px_22px] text-white"
+                : "glass text-foreground self-start rounded-[22px_22px_22px_7px]",
+            )}
+          >
+            {msg.body}
+          </div>
+        ))}
+        {typing && (
           <div className="glass flex items-center gap-1.5 self-start rounded-[22px_22px_22px_7px] px-4 py-3.5">
             {[0, 0.2, 0.4].map((delay) => (
               <span
@@ -167,7 +178,7 @@ export function ChatScreen({ conversation }: { conversation: Conversation }) {
           shape="round"
           aria-label="Envoyer"
           onClick={send}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || disabled}
         >
           <Send className="size-5" aria-hidden />
         </IconButton>
