@@ -18,7 +18,9 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     lang: siteConfig.locale,
     dir: "ltr",
-    background_color: "#faf8fd",
+    // Fond du splash natif (Android) — violet profond de la marque, cohérent
+    // avec le splash animé in-app, pour faire ressortir le logo.
+    background_color: "#2e2440",
     theme_color: siteConfig.themeColor.light,
     categories: ["social", "lifestyle", "dating"],
     icons: [

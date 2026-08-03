@@ -3,6 +3,7 @@ import { Nunito, Plus_Jakarta_Sans } from "next/font/google";
 
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
+import { SplashScreen } from "@/components/pwa/splash-screen";
 import { siteConfig } from "@/config/site";
 import { AppProviders } from "@/providers";
 
@@ -84,6 +85,31 @@ export default function RootLayout({
       className={`${jakarta.variable} ${nunito.variable} h-full`}
     >
       <body className="min-h-dvh antialiased">
+        {/* Splash de démarrage — peint dès le 1er rendu serveur, animé en CSS
+            pur, puis retiré par <SplashScreen> une fois l'app prête. */}
+        <div id="app-splash" aria-hidden="true">
+          <div className="af-splash-inner">
+            <div className="af-splash-badge">
+              <span className="af-splash-halo" />
+              <div
+                className="af-splash-logo"
+                role="img"
+                aria-label="AfriLove World"
+              />
+            </div>
+            <div className="af-splash-text">
+              <span className="af-splash-title">AFRILOVE WORLD</span>
+              <span className="af-splash-tagline">
+                L&apos;amour sans frontières
+              </span>
+            </div>
+            <div className="af-splash-dots" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+        </div>
         <a
           href="#contenu"
           className="focus:bg-primary focus:text-primary-foreground sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:px-4 focus:py-2"
@@ -94,6 +120,7 @@ export default function RootLayout({
           <OfflineBanner />
           <div id="contenu">{children}</div>
           <ServiceWorkerRegister />
+          <SplashScreen />
         </AppProviders>
       </body>
     </html>
