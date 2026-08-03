@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  BadgeCheck,
   Bell,
   ChevronRight,
   Globe,
@@ -50,6 +51,15 @@ export function SettingsScreen({
           </div>
           <ChevronRight className="text-subtle-foreground size-5" aria-hidden />
         </Link>
+
+        <div className="glass overflow-hidden rounded-[var(--radius-lg)]">
+          <NavRow
+            icon={BadgeCheck}
+            label="Vérifier mon compte"
+            href={ROUTES.verify}
+            last
+          />
+        </div>
 
         <div className="glass overflow-hidden rounded-[var(--radius-lg)]">
           <ToggleRow icon={Bell} label="Notifications" />
