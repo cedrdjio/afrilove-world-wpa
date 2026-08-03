@@ -21,6 +21,8 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  /** Raccourci `Boolean(user)` — consommé par les hooks de données. */
+  isAuthenticated: boolean;
   /** true tant que la session initiale n'est pas résolue (évite les flashs). */
   isLoading: boolean;
   /** Recharge la ligne `profiles` (après onboarding, édition…). */
@@ -109,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session,
       profile,
+      isAuthenticated: Boolean(user),
       isLoading,
       refreshProfile,
       signOut: doSignOut,
