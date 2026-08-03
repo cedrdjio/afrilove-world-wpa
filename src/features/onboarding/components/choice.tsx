@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, type LucideIcon } from "lucide-react";
+import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import type { IconType } from "@/features/onboarding/config";
 
 type ChoiceVariant = "card" | "tile" | "pill";
 
@@ -11,11 +12,11 @@ interface ChoiceProps {
   onSelect: () => void;
   label: string;
   description?: string;
-  icon?: LucideIcon;
+  icon?: IconType;
   /**
-   * `card` : carte pleine largeur (choix d'identité).
+   * `card` : carte pleine largeur (choix d'identité, religion, éducation…).
    * `tile` : tuile verticale icône + libellé (style de vie).
-   * `pill` : puce texte compacte (centres d'intérêt).
+   * `pill` : puce compacte (langues, intérêts, objectifs).
    */
   variant?: ChoiceVariant;
 }
@@ -36,13 +37,13 @@ export function Choice({
         onClick={onSelect}
         aria-pressed={selected}
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border px-3.5 py-2 text-sm font-semibold transition-all active:scale-[0.97]",
+          "inline-flex items-center gap-2 rounded-[var(--radius-pill)] border px-3.5 py-2 text-sm font-semibold transition-all active:scale-[0.97]",
           selected
             ? "border-primary bg-primary text-primary-foreground shadow-soft"
             : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-muted/40",
         )}
       >
-        {selected ? <Check className="size-3.5" aria-hidden /> : null}
+        {Icon ? <Icon className="size-4 shrink-0" aria-hidden /> : null}
         {label}
       </button>
     );

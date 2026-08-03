@@ -7,15 +7,17 @@ import {
   Dumbbell,
   Footprints,
   GlassWater,
-  type LucideIcon,
   Martini,
   PawPrint,
   Sofa,
+  Sparkles,
   Users,
   Wind,
   Wine,
 } from "lucide-react";
+import type { ComponentType, SVGProps } from "react";
 
+import { MarsIcon, VenusIcon } from "./gender-icons";
 import type {
   Drinking,
   Gender,
@@ -26,37 +28,70 @@ import type {
   WantsChildren,
 } from "./types";
 
+/** Composant d'icône vectorielle (Lucide ou SVG maison). Aucun emoji. */
+export type IconType = ComponentType<
+  SVGProps<SVGSVGElement> & { strokeWidth?: string | number }
+>;
+
 export interface Option<T extends string> {
   value: T;
   label: string;
-  /** Icône vectorielle Lucide — aucun emoji dans l'interface. */
-  icon?: LucideIcon;
+  icon?: IconType;
   description?: string;
 }
 
-/* Étapes d'identité (genre / recherche) : cartes épurées sans pictogramme
-   décoratif — plus premium et plus proche des standards iOS qu'un emoji. */
 export const GENDER_OPTIONS: Option<Gender>[] = [
-  { value: "femme", label: "Une femme" },
-  { value: "homme", label: "Un homme" },
+  {
+    value: "femme",
+    label: "Une femme",
+    icon: VenusIcon,
+    description: "Je m’identifie comme une femme",
+  },
+  {
+    value: "homme",
+    label: "Un homme",
+    icon: MarsIcon,
+    description: "Je m’identifie comme un homme",
+  },
+  {
+    value: "non-binaire",
+    label: "Non-binaire",
+    icon: Sparkles,
+    description: "Je m’identifie autrement",
+  },
 ];
 
 export const LOOKING_FOR_OPTIONS: Option<LookingFor>[] = [
-  { value: "femmes", label: "Des femmes" },
-  { value: "hommes", label: "Des hommes" },
-  { value: "les-deux", label: "Tout le monde" },
+  {
+    value: "femmes",
+    label: "Des femmes",
+    icon: VenusIcon,
+    description: "Afficher des profils féminins",
+  },
+  {
+    value: "hommes",
+    label: "Des hommes",
+    icon: MarsIcon,
+    description: "Afficher des profils masculins",
+  },
+  {
+    value: "les-deux",
+    label: "Tout le monde",
+    icon: Sparkles,
+    description: "Afficher tous les profils",
+  },
 ];
 
 export const SMOKING_OPTIONS: Option<Smoking>[] = [
   { value: "non_smoker", label: "Non-fumeur", icon: CigaretteOff },
-  { value: "occasional", label: "Parfois", icon: Wind },
+  { value: "occasional", label: "Occasionnel", icon: Wind },
   { value: "smoker", label: "Fumeur", icon: Cigarette },
 ];
 
 export const DRINKING_OPTIONS: Option<Drinking>[] = [
   { value: "never", label: "Jamais", icon: GlassWater },
-  { value: "socially", label: "En société", icon: Wine },
-  { value: "regularly", label: "Souvent", icon: Martini },
+  { value: "socially", label: "Socialement", icon: Wine },
+  { value: "regularly", label: "Régulièrement", icon: Martini },
 ];
 
 export const GYM_OPTIONS: Option<GymHabit>[] = [

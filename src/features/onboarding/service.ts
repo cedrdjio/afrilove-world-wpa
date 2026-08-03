@@ -36,6 +36,43 @@ export async function fetchCountries(client: Client): Promise<CountryOption[]> {
   return data ?? [];
 }
 
+/** Entrée générique d'un catalogue de référence (langues, religion…). */
+export interface CatalogOption {
+  id: string;
+  label: string;
+  subtitle?: string | null;
+}
+
+async function fetchCatalog(
+  client: Client,
+  table: "languages" | "religions" | "education_levels",
+): Promise<CatalogOption[]> {
+  const { data, error } = await client
+    .from(table)
+    .select("id, label")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return data ?? [];
+}
+
+export const fetchLanguages = (c: Client) => fetchCatalog(c, "languages");
+export const fetchReligions = (c: Client) => fetchCatalog(c, "religions");
+export const fetchEducationLevels = (c: Client) =>
+  fetchCatalog(c, "education_levels");
+
+export async function fetchRelationshipGoals(
+  client: Client,
+): Promise<CatalogOption[]> {
+  const { data, error } = await client
+    .from("relationship_goals")
+    .select("id, label, subtitle")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return data ?? [];
+}
+
 /**
  * Écrit le profil final et marque l'onboarding terminé. `profile_completed`
  * est recalculé par trigger (bio + 3 intérêts + 2 photos + lifestyle…) —
@@ -46,14 +83,25 @@ export async function persistOnboarding(
   userId: string,
   data: OnboardingData,
 ): Promise<void> {
+  const displayName = data.displayName.trim();
+  const privateName = data.privateName.trim();
+  const profession = data.profession.trim();
+
   const { error: profileError } = await client
     .from("profiles")
     .update({
+      first_name: displayName || null,
+      last_name: privateName || null,
       gender: data.gender,
       looking_for: data.lookingFor,
       birth_date: data.birthDate,
       country: data.country,
       city: data.city,
+      height_cm: data.heightCm,
+      profession: profession || null,
+      education_level_id: data.educationLevelId,
+      religion_id: data.religionId,
+      relationship_goal_id: data.relationshipGoalId,
       bio: data.bio.trim(),
       smoking: data.smoking,
       drinking: data.drinking,
@@ -65,21 +113,38 @@ export async function persistOnboarding(
     .eq("id", userId);
   if (profileError) throw profileError;
 
-  // Remplace intégralement la sélection d'intérêts (idempotent).
-  const { error: delError } = await client
-    .from("profile_interests")
-    .delete()
-    .eq("profile_id", userId);
-  if (delError) throw delError;
-
-  if (data.interestIds.length > 0) {
-    const { error: insError } = await client.from("profile_interests").insert(
-      data.interestIds.map((interestId) => ({
-        profile_id: userId,
-        interest_id: interestId,
-      })),
-    );
-    if (insError) throw insError;
+  // Remplace intégralement les sélections liées (idempotent).
+  {
+    const { error } = await client
+      .from("profile_interests")
+      .delete()
+      .eq("profile_id", userId);
+    if (error) throw error;
+    if (data.interestIds.length > 0) {
+      const { error: insError } = await client.from("profile_interests").insert(
+        data.interestIds.map((interest_id) => ({
+          profile_id: userId,
+          interest_id,
+        })),
+      );
+      if (insError) throw insError;
+    }
+  }
+  {
+    const { error } = await client
+      .from("profile_languages")
+      .delete()
+      .eq("profile_id", userId);
+    if (error) throw error;
+    if (data.languageIds.length > 0) {
+      const { error: insError } = await client.from("profile_languages").insert(
+        data.languageIds.map((language_id) => ({
+          profile_id: userId,
+          language_id,
+        })),
+      );
+      if (insError) throw insError;
+    }
   }
 }
 

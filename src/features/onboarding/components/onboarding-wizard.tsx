@@ -15,22 +15,27 @@ import { useAuth } from "@/providers/auth-provider";
 import { useSupabase } from "@/providers/supabase-provider";
 import {
   fetchCountries,
+  fetchEducationLevels,
   fetchInterests,
+  fetchLanguages,
+  fetchRelationshipGoals,
+  fetchReligions,
   persistOnboarding,
 } from "@/features/onboarding/service";
 import { useOnboardingStore } from "@/features/onboarding/store";
 import {
   MIN_INTERESTS,
+  MIN_LANGUAGES,
   type OnboardingData,
 } from "@/features/onboarding/types";
 import {
   BioStep,
-  BirthDateStep,
-  GenderStep,
+  DetailsStep,
+  GoalLifestyleStep,
+  IdentityStep,
   InterestsStep,
-  LifestyleStep,
+  LanguagesStep,
   LocationStep,
-  LookingForStep,
   ReviewStep,
 } from "./steps";
 import { PhotosStep } from "./photos-step";
@@ -51,26 +56,41 @@ function isAdult(iso: string | null): boolean {
 }
 
 const STEPS: StepDef[] = [
-  { key: "gender", title: "Je suis…", valid: (d) => !!d.gender },
-  { key: "lookingFor", title: "Je recherche…", valid: (d) => !!d.lookingFor },
   {
-    key: "birthDate",
-    title: "Votre date de naissance",
-    subtitle: "Pour proposer des profils de votre âge.",
-    valid: (d) => isAdult(d.birthDate),
+    key: "identity",
+    title: "Vos informations",
+    subtitle: "Ces informations personnalisent votre expérience.",
+    valid: (d) =>
+      d.displayName.trim().length > 0 &&
+      isAdult(d.birthDate) &&
+      !!d.gender &&
+      !!d.lookingFor,
   },
   { key: "location", title: "Où vivez-vous ?", valid: (d) => !!d.country },
+  {
+    key: "details",
+    title: "Quelques détails",
+    subtitle: "Tout est optionnel — enrichissez votre profil à votre rythme.",
+    valid: () => true,
+  },
+  {
+    key: "goal",
+    title: "Objectif & mode de vie",
+    valid: (d) =>
+      !!d.relationshipGoalId &&
+      !!(d.smoking && d.drinking && d.gymHabit && d.hasPets && d.wantsChildren),
+  },
+  {
+    key: "languages",
+    title: "Vos langues",
+    subtitle: "Quelles langues parlez-vous ?",
+    valid: (d) => d.languageIds.length >= MIN_LANGUAGES,
+  },
   {
     key: "bio",
     title: "Présentez-vous",
     subtitle: "Quelques mots sincères font toute la différence.",
     valid: (d) => d.bio.trim().length > 0,
-  },
-  {
-    key: "lifestyle",
-    title: "Votre style de vie",
-    valid: (d) =>
-      !!(d.smoking && d.drinking && d.gymHabit && d.hasPets && d.wantsChildren),
   },
   {
     key: "interests",
@@ -93,15 +113,36 @@ export function OnboardingWizard() {
   const [finishing, setFinishing] = useState(false);
   const [, setPhotoCount] = useState(0);
 
+  const hour = 1000 * 60 * 60;
   const interestsQuery = useQuery({
     queryKey: ["interests"],
     queryFn: () => fetchInterests(supabase),
-    staleTime: 1000 * 60 * 60,
+    staleTime: hour,
   });
   const countriesQuery = useQuery({
     queryKey: ["countries"],
     queryFn: () => fetchCountries(supabase),
-    staleTime: 1000 * 60 * 60,
+    staleTime: hour,
+  });
+  const languagesQuery = useQuery({
+    queryKey: ["languages"],
+    queryFn: () => fetchLanguages(supabase),
+    staleTime: hour,
+  });
+  const religionsQuery = useQuery({
+    queryKey: ["religions"],
+    queryFn: () => fetchReligions(supabase),
+    staleTime: hour,
+  });
+  const educationQuery = useQuery({
+    queryKey: ["education_levels"],
+    queryFn: () => fetchEducationLevels(supabase),
+    staleTime: hour,
+  });
+  const goalsQuery = useQuery({
+    queryKey: ["relationship_goals"],
+    queryFn: () => fetchRelationshipGoals(supabase),
+    staleTime: hour,
   });
 
   // Attache le brouillon au compte courant (remise à zéro si autre utilisateur).
@@ -132,7 +173,6 @@ export function OnboardingWizard() {
       setStep(step + 1);
       return;
     }
-    // Dernière étape : on enregistre le profil et on ouvre l'app.
     if (!user) return;
     setFinishing(true);
     try {
@@ -159,7 +199,11 @@ export function OnboardingWizard() {
 
   const catalogsPending =
     (current.key === "interests" && interestsQuery.isPending) ||
-    (current.key === "location" && countriesQuery.isPending);
+    (current.key === "location" && countriesQuery.isPending) ||
+    (current.key === "languages" && languagesQuery.isPending) ||
+    (current.key === "details" &&
+      (religionsQuery.isPending || educationQuery.isPending)) ||
+    (current.key === "goal" && goalsQuery.isPending);
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-4 pb-6">
@@ -205,6 +249,10 @@ export function OnboardingWizard() {
                   patch={patch}
                   interests={interestsQuery.data ?? []}
                   countries={countriesQuery.data ?? []}
+                  languages={languagesQuery.data ?? []}
+                  religions={religionsQuery.data ?? []}
+                  educationLevels={educationQuery.data ?? []}
+                  relationshipGoals={goalsQuery.data ?? []}
                   onPhotoCount={setPhotoCount}
                 />
               )}
@@ -237,6 +285,10 @@ function StepBody({
   patch,
   interests,
   countries,
+  languages,
+  religions,
+  educationLevels,
+  relationshipGoals,
   onPhotoCount,
 }: {
   stepKey: string;
@@ -244,25 +296,51 @@ function StepBody({
   patch: (p: Partial<OnboardingData>) => void;
   interests: Awaited<ReturnType<typeof fetchInterests>>;
   countries: Awaited<ReturnType<typeof fetchCountries>>;
+  languages: Awaited<ReturnType<typeof fetchLanguages>>;
+  religions: Awaited<ReturnType<typeof fetchReligions>>;
+  educationLevels: Awaited<ReturnType<typeof fetchEducationLevels>>;
+  relationshipGoals: Awaited<ReturnType<typeof fetchRelationshipGoals>>;
   onPhotoCount: (n: number) => void;
 }) {
   switch (stepKey) {
-    case "gender":
-      return <GenderStep data={data} patch={patch} />;
-    case "lookingFor":
-      return <LookingForStep data={data} patch={patch} />;
-    case "birthDate":
-      return <BirthDateStep data={data} patch={patch} />;
+    case "identity":
+      return <IdentityStep data={data} patch={patch} />;
     case "location":
       return <LocationStep data={data} patch={patch} countries={countries} />;
+    case "details":
+      return (
+        <DetailsStep
+          data={data}
+          patch={patch}
+          religions={religions}
+          educationLevels={educationLevels}
+        />
+      );
+    case "goal":
+      return (
+        <GoalLifestyleStep
+          data={data}
+          patch={patch}
+          relationshipGoals={relationshipGoals}
+        />
+      );
+    case "languages":
+      return <LanguagesStep data={data} patch={patch} languages={languages} />;
     case "bio":
       return <BioStep data={data} patch={patch} />;
-    case "lifestyle":
-      return <LifestyleStep data={data} patch={patch} />;
     case "interests":
       return <InterestsStep data={data} patch={patch} interests={interests} />;
     case "review":
-      return <ReviewStep data={data} patch={patch} />;
+      return (
+        <ReviewStep
+          data={data}
+          patch={patch}
+          religions={religions}
+          educationLevels={educationLevels}
+          relationshipGoals={relationshipGoals}
+          languages={languages}
+        />
+      );
     case "photos":
       return <PhotosStep onCountChange={onPhotoCount} />;
     default:
