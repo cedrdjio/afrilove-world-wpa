@@ -15,9 +15,9 @@ import { z } from "zod";
  * variables d'environnement configurées ; définir les vraies variables dans
  * l'hébergeur (Vercel) les remplace automatiquement.
  */
-const PUBLIC_SUPABASE_URL = "https://gfescsfdrwplsakazcpf.supabase.co";
+const PUBLIC_SUPABASE_URL = "https://xhpwmondzarbnzciruis.supabase.co";
 const PUBLIC_SUPABASE_ANON_KEY =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmZXNjc2ZkcndwbHNha2F6Y3BmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU0NTE2OTAsImV4cCI6MjEwMTAyNzY5MH0.oL7sWSZ4rvwoV_G628KntMrb0SRg5EbfLdi4i7Ek_ko";
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhocHdtb25kemFyYm56Y2lydWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NjE3NDcsImV4cCI6MjA5ODQzNzc0N30.UILit6ltV-kdUPMLM5vk4sUu0s3XG7v7kYYdBmTZTQY";
 
 const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
