@@ -18,6 +18,14 @@ export function SplashScreen() {
     const el = document.getElementById("app-splash");
     if (!el) return;
 
+    // Marque le splash comme « vu » pour cette session : les chargements de
+    // document suivants (rechargement, navigation dure) ne le rejoueront pas.
+    try {
+      sessionStorage.setItem("afl-splash-seen", "1");
+    } catch {
+      // sessionStorage indisponible (mode privé strict) : sans gravité.
+    }
+
     const start = performance.now();
     let dismissed = false;
 
