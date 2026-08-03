@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { m } from "framer-motion";
-import { Search } from "lucide-react";
+import { Bell, Search } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
@@ -24,9 +24,16 @@ export function ConversationsScreen() {
     <div className="mx-auto w-full max-w-md px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
       <header className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-extrabold">Messages</h1>
-        <IconButton tone="glass" aria-label="Rechercher">
-          <Search className="size-5" aria-hidden />
-        </IconButton>
+        <div className="flex items-center gap-2.5">
+          <IconButton tone="glass" aria-label="Activité" asChild>
+            <Link href={ROUTES.activity}>
+              <Bell className="size-5" aria-hidden />
+            </Link>
+          </IconButton>
+          <IconButton tone="glass" aria-label="Rechercher">
+            <Search className="size-5" aria-hidden />
+          </IconButton>
+        </div>
       </header>
 
       <section className="mt-6" aria-label="Nouveaux matchs">
