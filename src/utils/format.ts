@@ -24,3 +24,34 @@ export function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return `${text.slice(0, max - 1).trimEnd()}…`;
 }
+
+const TIME_FMT = new Intl.DateTimeFormat("fr-FR", {
+  hour: "2-digit",
+  minute: "2-digit",
+});
+const WEEKDAY_FMT = new Intl.DateTimeFormat("fr-FR", { weekday: "short" });
+
+/**
+ * Heure/étiquette relative pour les listes de conversations (« 14:32 »,
+ * « Hier », « Lun »). Basé sur `Intl` — zéro dépendance, localisé fr-FR.
+ */
+export function formatConversationTime(iso: string, now = new Date()): string {
+  const date = new Date(iso);
+  const dayMs = 86_400_000;
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const days = Math.round((startOfDay(now) - startOfDay(date)) / dayMs);
+
+  if (days <= 0) return TIME_FMT.format(date);
+  if (days === 1) return "Hier";
+  if (days < 7) return WEEKDAY_FMT.format(date).replace(".", "");
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+  }).format(date);
+}
+
+/** Heure courte « 14:20 » (bulles de chat). */
+export function formatClockTime(iso: string): string {
+  return TIME_FMT.format(new Date(iso));
+}

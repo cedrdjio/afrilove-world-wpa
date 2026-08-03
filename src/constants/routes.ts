@@ -21,7 +21,12 @@ export const ROUTES = {
   likes: "/likes",
   messages: "/messages",
   profile: "/profile",
+  photos: "/profile/photos",
   settings: "/settings",
+  filters: "/filters",
+  activity: "/activity",
+  premium: "/premium",
+  events: "/events",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -39,6 +44,10 @@ export const PROTECTED_PREFIXES = [
   "/messages",
   "/profile",
   "/settings",
+  "/filters",
+  "/activity",
+  "/premium",
+  "/events",
 ] as const;
 
 /** Écrans d'authentification (interdits aux membres déjà connectés). */
