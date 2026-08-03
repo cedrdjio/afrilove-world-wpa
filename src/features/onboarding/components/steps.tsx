@@ -23,7 +23,7 @@ import {
   PETS_OPTIONS,
   SMOKING_OPTIONS,
 } from "@/features/onboarding/config";
-import { interestIcon } from "@/features/onboarding/icon-map";
+import { interestIcon } from "@/lib/interest-icon";
 import {
   type CatalogOption,
   type CountryOption,

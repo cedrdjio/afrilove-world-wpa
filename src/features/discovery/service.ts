@@ -143,6 +143,12 @@ async function swipe(
   return { isMatch: Boolean(match), matchId: match?.id ?? null };
 }
 
+/** Un centre d'intérêt affichable — libellé + nom d'icône Lucide (table `interests`). */
+export interface ProfileInterest {
+  label: string;
+  icon: string | null;
+}
+
 /** Fiche publique détaillée d'un profil (« 05 »), via `get_public_profile`. */
 export interface PublicProfileView {
   id: string;
@@ -150,13 +156,23 @@ export interface PublicProfileView {
   age: number;
   photos: string[];
   verified: boolean;
+  /** Actif à l'instant (dernier heartbeat < 5 min) → badge « En temps réel ». */
+  online: boolean;
   city: string | null;
   country: string | null;
   distanceKm: number | null;
   bio: string | null;
   profession: string | null;
-  interests: string[];
+  interests: ProfileInterest[];
   lastActiveAt: string | null;
+}
+
+/** Seuil de présence « temps réel » : dernier signe de vie il y a moins de 5 min. */
+const ONLINE_WINDOW_MS = 5 * 60_000;
+
+function isOnline(lastActiveAt: string | null): boolean {
+  if (!lastActiveAt) return false;
+  return Date.now() - new Date(lastActiveAt).getTime() < ONLINE_WINDOW_MS;
 }
 
 async function fetchPublicProfile(
@@ -170,29 +186,32 @@ async function fetchPublicProfile(
   const row = data?.[0];
   if (!row) return null;
 
-  let interests: string[] = [];
+  let interests: ProfileInterest[] = [];
   const ids = row.interest_ids ?? [];
   if (ids.length) {
     const { data: rows } = await supabase
       .from("interests")
-      .select("id, label")
-      .in("id", ids);
-    interests = (rows ?? []).map((r) => r.label);
+      .select("id, label, icon, sort_order")
+      .in("id", ids)
+      .order("sort_order");
+    interests = (rows ?? []).map((r) => ({ label: r.label, icon: r.icon }));
   }
 
+  const lastActiveAt = row.last_active_at ?? null;
   return {
     id: row.id,
     firstName: row.first_name ?? "",
     age: row.age,
     photos: row.photo_urls ?? [],
     verified: row.is_verified,
+    online: isOnline(lastActiveAt),
     city: row.city,
     country: row.country,
     distanceKm: row.distance_km,
     bio: row.bio,
     profession: row.profession,
     interests,
-    lastActiveAt: row.last_active_at ?? null,
+    lastActiveAt,
   };
 }
 

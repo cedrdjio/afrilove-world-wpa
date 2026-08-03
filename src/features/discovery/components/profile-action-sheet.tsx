@@ -23,16 +23,19 @@ export function ProfileActionSheet({
   isFavorite,
   onClose,
   onBlocked,
+  initialView = "menu",
 }: {
   targetId: string;
   firstName: string;
   isFavorite: boolean;
   onClose: () => void;
   onBlocked: () => void;
+  /** Ouvre directement le panneau de signalement (footer « Signaler »). */
+  initialView?: "menu" | "report";
 }) {
   const toggleFavorite = useToggleFavorite();
   const block = useBlockProfile();
-  const [reporting, setReporting] = useState(false);
+  const [reporting, setReporting] = useState(initialView === "report");
 
   return (
     <AnimatePresence>

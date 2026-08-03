@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
 import { findProfile } from "@/features/profiles/data";
 import { useFavoriteIds } from "@/features/favorites/hooks";
+import { useBlockProfile } from "@/features/moderation/hooks";
 
 import { discoveryService } from "../service";
 import { usePublicProfile, useSwipe } from "../hooks";
@@ -39,15 +42,14 @@ function DemoProfileDetail({ id }: { id: string }) {
     id: profile.id,
     firstName: profile.firstName,
     age: profile.age,
-    heroPhoto: profile.photos[0],
+    photos: profile.photos,
     verified: profile.verified,
+    online: profile.online,
     locationLine: `${profile.origin} · vit à ${profile.city} · à ${profile.distanceKm} km`,
+    profession: null,
     bio: profile.bio,
-    interests: profile.interests,
-    stats: [
-      { value: `${profile.compatibility}%`, label: "compatibilité" },
-      { value: String(profile.mutualFriends), label: "amis en commun" },
-    ],
+    interests: profile.interests.map((label) => ({ label, icon: null })),
+    privatePhotoCount: 0,
   };
 
   return (
@@ -63,6 +65,8 @@ function DemoProfileDetail({ id }: { id: string }) {
         router.push(ROUTES.discover);
       }}
       onMessage={() => router.push(`${ROUTES.messages}/${profile.id}`)}
+      onReport={() => toast("Connectez-vous pour signaler ce profil.")}
+      onBlock={() => toast("Connectez-vous pour bloquer ce profil.")}
     />
   );
 }
@@ -73,9 +77,10 @@ function RealProfileDetail({ id }: { id: string }) {
   const { profile: me } = useAuth();
   const { data, isLoading } = usePublicProfile(id);
   const swipeMutation = useSwipe();
+  const block = useBlockProfile();
   const favoriteIds = useFavoriteIds();
   const [match, setMatch] = useState<MatchView | null>(null);
-  const [optionsOpen, setOptionsOpen] = useState(false);
+  const [sheet, setSheet] = useState<"closed" | "menu" | "report">("closed");
 
   useEffect(() => {
     discoveryService.recordView(id).catch(() => {});
@@ -95,8 +100,9 @@ function RealProfileDetail({ id }: { id: string }) {
     id: p.id,
     firstName: p.firstName,
     age: p.age,
-    heroPhoto: p.photos[0] ?? null,
+    photos: p.photos,
     verified: p.verified,
+    online: p.online,
     locationLine: [
       p.city,
       p.country,
@@ -104,9 +110,23 @@ function RealProfileDetail({ id }: { id: string }) {
     ]
       .filter(Boolean)
       .join(" · "),
+    profession: p.profession,
     bio: p.bio,
     interests: p.interests,
-    stats: p.profession ? [{ value: p.profession, label: "profession" }] : [],
+    // L'album privé (18+) n'est pas exposé par `get_public_profile` :
+    // pas de tuile verrouillée tant que la fonctionnalité n'est pas branchée.
+    privatePhotoCount: 0,
+  };
+
+  const doBlock = () => {
+    haptic("warning");
+    block.mutate(id, {
+      onSuccess: () => {
+        toast.success(`${p.firstName} a été bloqué·e.`);
+        router.push(ROUTES.discover);
+      },
+      onError: () => toast.error("Blocage impossible. Réessayez."),
+    });
   };
 
   const doSwipe = (
@@ -145,16 +165,20 @@ function RealProfileDetail({ id }: { id: string }) {
         }}
         onLike={onLike}
         onMessage={onLike}
-        onOptions={() => setOptionsOpen(true)}
+        onOptions={() => setSheet("menu")}
+        onReport={() => setSheet("report")}
+        onBlock={doBlock}
+        onUnlockPrivate={() => router.push(ROUTES.premium)}
       />
-      {optionsOpen && (
+      {sheet !== "closed" && (
         <ProfileActionSheet
           targetId={id}
           firstName={p.firstName}
           isFavorite={favoriteIds.has(id)}
-          onClose={() => setOptionsOpen(false)}
+          initialView={sheet === "report" ? "report" : "menu"}
+          onClose={() => setSheet("closed")}
           onBlocked={() => {
-            setOptionsOpen(false);
+            setSheet("closed");
             router.push(ROUTES.discover);
           }}
         />

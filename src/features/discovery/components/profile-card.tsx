@@ -37,8 +37,7 @@ export function ProfileCard({
           fill
           sizes="(max-width: 448px) 100vw, 400px"
           priority={priority}
-          className="object-cover"
-          style={{ objectPosition: "50% 30%" }}
+          className="object-cover object-[center_28%]"
           draggable={false}
         />
       ) : (
