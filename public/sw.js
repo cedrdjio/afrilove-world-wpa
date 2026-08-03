@@ -3,18 +3,44 @@
  *
  * Stratégies :
  *  - Précache de l'app shell minimal (accueil + repli offline + icônes).
- *  - Navigations (documents)   : network-first → cache → /offline.
+ *  - Navigations (documents)   : network-first (avec TIMEOUT) → cache → /offline.
  *  - Statique Next (_next/…)   : stale-while-revalidate (immuable, hashé).
  *  - Images                    : cache-first (plafonné).
  * Nettoyage automatique des anciens caches à l'activation.
  *
  * ⚠️ Incrémentez CACHE_VERSION à chaque changement de stratégie de cache.
  */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const PRECACHE = `alw-precache-${CACHE_VERSION}`;
 const RUNTIME = `alw-runtime-${CACHE_VERSION}`;
 const IMAGES = `alw-images-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline";
+
+/*
+ * Délai au-delà duquel une navigation réseau est considérée perdue. Essentiel
+ * sur connexion très lente : sans lui, `fetch()` reste suspendu (ne rejette
+ * jamais), le repli hors-ligne ne s'active pas, et le navigateur finit par
+ * afficher SON écran d'erreur. Avec le timeout, on sert /offline à la place.
+ */
+const NAV_TIMEOUT_MS = 8000;
+
+/** Rejette après `ms` — pour départager une réponse réseau trop lente. */
+function rejectAfter(ms) {
+  return new Promise((_, reject) => {
+    setTimeout(() => reject(new Error("network-timeout")), ms);
+  });
+}
+
+/** `fetch` borné dans le temps (annule la requête via AbortController). */
+async function fetchWithTimeout(request, ms) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 const PRECACHE_URLS = [
   "/",
@@ -28,11 +54,15 @@ const PRECACHE_URLS = [
 const IMAGE_CACHE_LIMIT = 60;
 
 self.addEventListener("install", (event) => {
+  // Cache tolérant : un échec sur une URL (connexion instable) ne doit pas
+  // empêcher l'installation du SW — sinon aucun repli hors-ligne ne sera
+  // jamais disponible. On met en cache ce qu'on peut, puis on active.
   event.waitUntil(
-    caches
-      .open(PRECACHE)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      .then(() => self.skipWaiting()),
+    (async () => {
+      const cache = await caches.open(PRECACHE);
+      await Promise.allSettled(PRECACHE_URLS.map((url) => cache.add(url)));
+      await self.skipWaiting();
+    })(),
   );
 });
 
@@ -70,20 +100,34 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // 1) Navigations — network-first avec repli offline.
+  // 1) Navigations — network-first BORNÉ, repli cache puis /offline.
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {
         try {
-          const preload = await event.preloadResponse;
-          if (preload) return preload;
-          const network = await fetch(request);
+          // Réponse préchargée (navigationPreload) si elle arrive à temps,
+          // sinon fetch borné : dans tous les cas on abandonne le réseau au
+          // bout de NAV_TIMEOUT_MS plutôt que de rester suspendu.
+          const preload = await Promise.race([
+            event.preloadResponse,
+            rejectAfter(NAV_TIMEOUT_MS),
+          ]);
+          const network =
+            preload || (await fetchWithTimeout(request, NAV_TIMEOUT_MS));
           const cache = await caches.open(RUNTIME);
           cache.put(request, network.clone());
           return network;
         } catch {
           const cached = await caches.match(request);
-          return cached || (await caches.match(OFFLINE_URL));
+          return (
+            cached ||
+            (await caches.match(OFFLINE_URL)) ||
+            new Response("Hors ligne", {
+              status: 504,
+              statusText: "Hors ligne",
+              headers: { "Content-Type": "text/plain; charset=utf-8" },
+            })
+          );
         }
       })(),
     );
