@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { MailCheck } from "lucide-react";
@@ -25,6 +25,15 @@ export type VerifyMode = "signup" | "recovery";
 /** Longueur minimale avant d'activer « Vérifier » (OTP e-mail Supabase = 6). */
 const MIN_OTP_LENGTH = 6;
 const RESEND_COOLDOWN = 60;
+/** Secours : garde l'e-mail en attente à travers un rechargement de page. */
+const PENDING_EMAIL_KEY = "afl-pending-email";
+
+/** `useSyncExternalStore` sans réactivité : lecture unique du sessionStorage. */
+const NO_SUBSCRIBE = () => () => {};
+const readPendingEmail = () =>
+  typeof window !== "undefined"
+    ? window.sessionStorage.getItem(PENDING_EMAIL_KEY)
+    : null;
 
 /**
  * Écran de saisie du code (inscription ou récupération). Tout se joue dans
@@ -33,7 +42,7 @@ const RESEND_COOLDOWN = 60;
  * « Nouveau mot de passe » (récupération).
  */
 export function VerifyOtpScreen({
-  email,
+  email: initialEmail,
   mode,
 }: {
   email: string | null;
@@ -48,11 +57,27 @@ export function VerifyOtpScreen({
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
 
+  // Persistance de secours : e-mail restauré depuis le sessionStorage si le
+  // paramètre d'URL est perdu (rechargement) — évite le faux « Lien incomplet ».
+  const storedEmail = useSyncExternalStore(
+    NO_SUBSCRIBE,
+    readPendingEmail,
+    () => null,
+  );
+  const email = initialEmail ?? storedEmail;
+
   useEffect(() => {
     if (cooldown <= 0) return;
     const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
     return () => clearTimeout(timer);
   }, [cooldown]);
+
+  // Mémorise l'e-mail entrant pour survivre à un futur rechargement.
+  useEffect(() => {
+    if (initialEmail && typeof window !== "undefined") {
+      window.sessionStorage.setItem(PENDING_EMAIL_KEY, initialEmail);
+    }
+  }, [initialEmail]);
 
   const isSignup = mode === "signup";
 
@@ -91,6 +116,8 @@ export function VerifyOtpScreen({
       return;
     }
     haptic("success");
+    if (typeof window !== "undefined")
+      window.sessionStorage.removeItem(PENDING_EMAIL_KEY);
     // Session ouverte : la destination réelle est arbitrée par la garde de la
     // page cible (onboarding renvoie vers découverte si déjà complété).
     router.replace(isSignup ? ROUTES.onboarding : ROUTES.resetPassword);
