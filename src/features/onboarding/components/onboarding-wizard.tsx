@@ -30,13 +30,24 @@ import {
 } from "@/features/onboarding/types";
 import {
   BioStep,
-  DetailsStep,
-  GoalLifestyleStep,
-  IdentityStep,
+  BirthDateStep,
+  ChildrenStep,
+  DrinkingStep,
+  EducationStep,
+  GenderStep,
+  GoalStep,
+  GymStep,
+  HeightStep,
   InterestsStep,
   LanguagesStep,
   LocationStep,
+  LookingForStep,
+  NameStep,
+  PetsStep,
+  ProfessionStep,
+  ReligionStep,
   ReviewStep,
+  SmokingStep,
 } from "./steps";
 import { PhotosStep } from "./photos-step";
 import { OnboardingProgress } from "./onboarding-progress";
@@ -45,6 +56,8 @@ interface StepDef {
   key: string;
   title: string;
   subtitle?: string;
+  /** Étape facultative : affiche un lien « Passer ». */
+  optional?: boolean;
   valid: (d: OnboardingData) => boolean;
 }
 
@@ -55,31 +68,72 @@ function isAdult(iso: string | null): boolean {
   return new Date(iso).getTime() <= eighteen.getTime();
 }
 
+// Un écran = une seule question. Le parcours est volontairement découpé pour
+// ne jamais présenter plusieurs sujets sur un même écran (pattern Hinge/Bumble).
 const STEPS: StepDef[] = [
   {
-    key: "identity",
-    title: "Vos informations",
-    subtitle: "Ces informations personnalisent votre expérience.",
-    valid: (d) =>
-      d.displayName.trim().length > 0 &&
-      isAdult(d.birthDate) &&
-      !!d.gender &&
-      !!d.lookingFor,
+    key: "name",
+    title: "Comment vous appeler ?",
+    subtitle: "Votre pseudo sera visible sur votre profil.",
+    valid: (d) => d.displayName.trim().length > 0,
   },
-  { key: "location", title: "Où vivez-vous ?", valid: (d) => !!d.country },
   {
-    key: "details",
-    title: "Quelques détails",
-    subtitle: "Tout est optionnel — enrichissez votre profil à votre rythme.",
+    key: "birthdate",
+    title: "Votre date de naissance",
+    subtitle: "Vous devez avoir au moins 18 ans. Seul votre âge sera affiché.",
+    valid: (d) => isAdult(d.birthDate),
+  },
+  { key: "gender", title: "Vous êtes…", valid: (d) => !!d.gender },
+  {
+    key: "lookingFor",
+    title: "Vous recherchez…",
+    subtitle: "Les profils que vous verrez dans la découverte.",
+    valid: (d) => !!d.lookingFor,
+  },
+  {
+    key: "location",
+    title: "Où vivez-vous ?",
+    valid: (d) => !!d.country,
+  },
+  {
+    key: "height",
+    title: "Votre taille",
+    subtitle: "Optionnel — vous pourrez l’ajouter plus tard.",
+    optional: true,
+    valid: () => true,
+  },
+  {
+    key: "profession",
+    title: "Votre profession",
+    subtitle: "Optionnel.",
+    optional: true,
+    valid: () => true,
+  },
+  {
+    key: "education",
+    title: "Votre niveau d’études",
+    subtitle: "Optionnel.",
+    optional: true,
+    valid: () => true,
+  },
+  {
+    key: "religion",
+    title: "Votre religion",
+    subtitle: "Optionnel.",
+    optional: true,
     valid: () => true,
   },
   {
     key: "goal",
-    title: "Objectif & mode de vie",
-    valid: (d) =>
-      !!d.relationshipGoalId &&
-      !!(d.smoking && d.drinking && d.gymHabit && d.hasPets && d.wantsChildren),
+    title: "Que recherchez-vous ?",
+    subtitle: "Le type de relation qui vous intéresse.",
+    valid: (d) => !!d.relationshipGoalId,
   },
+  { key: "smoking", title: "Tabac ?", valid: (d) => !!d.smoking },
+  { key: "drinking", title: "Alcool ?", valid: (d) => !!d.drinking },
+  { key: "gym", title: "Sport ?", valid: (d) => !!d.gymHabit },
+  { key: "pets", title: "Animaux ?", valid: (d) => !!d.hasPets },
+  { key: "children", title: "Enfants ?", valid: (d) => !!d.wantsChildren },
   {
     key: "languages",
     title: "Vos langues",
@@ -201,8 +255,8 @@ export function OnboardingWizard() {
     (current.key === "interests" && interestsQuery.isPending) ||
     (current.key === "location" && countriesQuery.isPending) ||
     (current.key === "languages" && languagesQuery.isPending) ||
-    (current.key === "details" &&
-      (religionsQuery.isPending || educationQuery.isPending)) ||
+    (current.key === "education" && educationQuery.isPending) ||
+    (current.key === "religion" && religionsQuery.isPending) ||
     (current.key === "goal" && goalsQuery.isPending);
 
   return (
@@ -261,7 +315,7 @@ export function OnboardingWizard() {
         </div>
       </div>
 
-      <div className="pt-4">
+      <div className="flex flex-col gap-3 pt-4">
         <Button
           size="lg"
           block
@@ -274,6 +328,15 @@ export function OnboardingWizard() {
               ? "Terminer & découvrir"
               : "Continuer"}
         </Button>
+        {current.optional && !isLast ? (
+          <button
+            type="button"
+            onClick={next}
+            className="text-subtle-foreground hover:text-foreground text-center text-sm font-semibold transition-colors"
+          >
+            Passer cette étape
+          </button>
+        ) : null}
       </div>
     </div>
   );
@@ -303,27 +366,48 @@ function StepBody({
   onPhotoCount: (n: number) => void;
 }) {
   switch (stepKey) {
-    case "identity":
-      return <IdentityStep data={data} patch={patch} />;
+    case "name":
+      return <NameStep data={data} patch={patch} />;
+    case "birthdate":
+      return <BirthDateStep data={data} patch={patch} />;
+    case "gender":
+      return <GenderStep data={data} patch={patch} />;
+    case "lookingFor":
+      return <LookingForStep data={data} patch={patch} />;
     case "location":
       return <LocationStep data={data} patch={patch} countries={countries} />;
-    case "details":
+    case "height":
+      return <HeightStep data={data} patch={patch} />;
+    case "profession":
+      return <ProfessionStep data={data} patch={patch} />;
+    case "education":
       return (
-        <DetailsStep
+        <EducationStep
           data={data}
           patch={patch}
-          religions={religions}
           educationLevels={educationLevels}
         />
       );
+    case "religion":
+      return <ReligionStep data={data} patch={patch} religions={religions} />;
     case "goal":
       return (
-        <GoalLifestyleStep
+        <GoalStep
           data={data}
           patch={patch}
           relationshipGoals={relationshipGoals}
         />
       );
+    case "smoking":
+      return <SmokingStep data={data} patch={patch} />;
+    case "drinking":
+      return <DrinkingStep data={data} patch={patch} />;
+    case "gym":
+      return <GymStep data={data} patch={patch} />;
+    case "pets":
+      return <PetsStep data={data} patch={patch} />;
+    case "children":
+      return <ChildrenStep data={data} patch={patch} />;
     case "languages":
       return <LanguagesStep data={data} patch={patch} languages={languages} />;
     case "bio":

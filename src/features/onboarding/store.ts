@@ -33,6 +33,8 @@ export const useOnboardingStore = create<OnboardingState>()(
       setStep: (step) => set({ step }),
       clear: () => set({ ownerId: null, data: EMPTY_ONBOARDING, step: 0 }),
     }),
-    { name: "afl-onboarding-draft" },
+    // Clé v2 : le parcours a été redécoupé (une question par écran), l'ancien
+    // index d'étape n'est plus valide — on repart d'un brouillon propre.
+    { name: "afl-onboarding-draft-v2" },
   ),
 );
