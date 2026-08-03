@@ -9,11 +9,13 @@ import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
 import { findProfile } from "@/features/profiles/data";
+import { useFavoriteIds } from "@/features/favorites/hooks";
 
 import { discoveryService } from "../service";
 import { usePublicProfile, useSwipe } from "../hooks";
 import type { SwipeAction } from "../types";
 import { ProfileDetail, type ProfileDetailView } from "./profile-detail";
+import { ProfileActionSheet } from "./profile-action-sheet";
 import { MatchOverlayView, type MatchView } from "./match-overlay";
 
 /**
@@ -71,7 +73,9 @@ function RealProfileDetail({ id }: { id: string }) {
   const { profile: me } = useAuth();
   const { data, isLoading } = usePublicProfile(id);
   const swipeMutation = useSwipe();
+  const favoriteIds = useFavoriteIds();
   const [match, setMatch] = useState<MatchView | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
 
   useEffect(() => {
     discoveryService.recordView(id).catch(() => {});
@@ -141,7 +145,20 @@ function RealProfileDetail({ id }: { id: string }) {
         }}
         onLike={onLike}
         onMessage={onLike}
+        onOptions={() => setOptionsOpen(true)}
       />
+      {optionsOpen && (
+        <ProfileActionSheet
+          targetId={id}
+          firstName={p.firstName}
+          isFavorite={favoriteIds.has(id)}
+          onClose={() => setOptionsOpen(false)}
+          onBlocked={() => {
+            setOptionsOpen(false);
+            router.push(ROUTES.discover);
+          }}
+        />
+      )}
       <MatchOverlayView
         match={match}
         myPhoto={me?.avatar_url ?? null}

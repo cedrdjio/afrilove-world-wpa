@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { m } from "framer-motion";
-import { Pencil, Settings, Sparkles } from "lucide-react";
+import { Bookmark, Pencil, Settings, Sparkles } from "lucide-react";
 
 import { VerifiedBadge } from "@/components/brand/verified-badge";
 import { Avatar } from "@/components/ui/avatar";
@@ -30,11 +30,18 @@ export function MyProfileScreen({ vm }: { vm: ProfileViewModel }) {
     <div className="mx-auto w-full max-w-md px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28">
       <header className="flex items-center justify-between">
         <h1 className="font-display text-2xl font-extrabold">Mon profil</h1>
-        <IconButton tone="glass" aria-label="Réglages" asChild>
-          <Link href={ROUTES.settings}>
-            <Settings className="size-5" aria-hidden />
-          </Link>
-        </IconButton>
+        <div className="flex items-center gap-2">
+          <IconButton tone="glass" aria-label="Mes favoris" asChild>
+            <Link href={ROUTES.favorites}>
+              <Bookmark className="size-5" aria-hidden />
+            </Link>
+          </IconButton>
+          <IconButton tone="glass" aria-label="Réglages" asChild>
+            <Link href={ROUTES.settings}>
+              <Settings className="size-5" aria-hidden />
+            </Link>
+          </IconButton>
+        </div>
       </header>
 
       <m.div

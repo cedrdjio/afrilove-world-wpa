@@ -38,6 +38,8 @@ export interface DiscoveryFilters {
   mode: DiscoveryFeedMode;
   /** Ids de la table `interests` ; vide = pas de filtre. */
   interestIds?: string[];
+  /** Distance max en km ; au-delà du plafond = illimité (non transmis). */
+  maxDistanceKm?: number;
 }
 
 /** Ligne du sélecteur « pays précis » (RPC get_discovery_countries). */

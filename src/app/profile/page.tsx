@@ -10,6 +10,7 @@ import {
   MyProfileScreen,
   type ProfileViewModel,
 } from "@/features/profile/components/my-profile-screen";
+import { useProfileStats } from "@/features/profile/hooks";
 import { DEMO_ME } from "@/features/profiles/data";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -26,6 +27,7 @@ function ageFrom(birthDate: string | null): number | null {
 export default function ProfilePage() {
   const router = useRouter();
   const { user, profile, isLoading } = useAuth();
+  const { data: stats } = useProfileStats();
 
   useEffect(() => {
     if (!isLoading && profile && !profile.onboarding_completed) {
@@ -53,7 +55,7 @@ export default function ProfilePage() {
     bio: profile.bio ?? DEMO_ME.bio,
     verified: profile.is_verified ?? DEMO_ME.verified,
     completion: profile.profile_completed ? 100 : DEMO_ME.completion,
-    stats: DEMO_ME.stats,
+    stats: stats ?? DEMO_ME.stats,
   };
 
   return (

@@ -1,4 +1,5 @@
 import { db } from "@/services/supabase/browser";
+import { DISTANCE_MAX_KM } from "./filters-store";
 import type {
   DiscoveryCountry,
   DiscoveryFilters,
@@ -7,6 +8,13 @@ import type {
 } from "./types";
 
 const DECK_SIZE = 25;
+
+/** N'impose une distance que si le curseur est sous le plafond. */
+function distanceParam(maxDistanceKm?: number): number | undefined {
+  if (maxDistanceKm == null || maxDistanceKm >= DISTANCE_MAX_KM)
+    return undefined;
+  return maxDistanceKm;
+}
 
 interface SearchProfilesRow {
   id: string;
@@ -55,6 +63,7 @@ async function searchProfiles(
     p_scope: filters.scope,
     p_country:
       filters.scope === "country" ? (filters.country ?? undefined) : undefined,
+    p_max_distance_km: distanceParam(filters.maxDistanceKm),
     p_limit: DECK_SIZE,
   });
   if (error) throw error;
@@ -65,7 +74,13 @@ async function searchProfiles(
 async function countProfiles(
   filters: Pick<
     DiscoveryFilters,
-    "ageMin" | "ageMax" | "scope" | "country" | "verifiedOnly" | "interestIds"
+    | "ageMin"
+    | "ageMax"
+    | "scope"
+    | "country"
+    | "verifiedOnly"
+    | "interestIds"
+    | "maxDistanceKm"
   >,
 ): Promise<number> {
   const { data, error } = await db().rpc("count_search_profiles", {
@@ -78,6 +93,7 @@ async function countProfiles(
     p_scope: filters.scope,
     p_country:
       filters.scope === "country" ? (filters.country ?? undefined) : undefined,
+    p_max_distance_km: distanceParam(filters.maxDistanceKm),
   });
   if (error) throw error;
   return data ?? 0;
@@ -186,6 +202,24 @@ async function recordView(id: string): Promise<void> {
   if (error) throw error;
 }
 
+/** Centre d'intérêt sélectionnable dans les filtres. */
+export interface InterestOption {
+  id: string;
+  label: string;
+  icon: string | null;
+}
+
+/** Liste des centres d'intérêt actifs (filtres Découverte). */
+async function fetchInterests(): Promise<InterestOption[]> {
+  const { data, error } = await db()
+    .from("interests")
+    .select("id, label, icon")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return data ?? [];
+}
+
 /** Recherche libre (nom / ville / pays) sur tout le vivier découvrable. */
 async function searchByText(query: string): Promise<DiscoveryProfile[]> {
   const { data, error } = await db().rpc("search_profiles", {
@@ -204,4 +238,5 @@ export const discoveryService = {
   fetchPublicProfile,
   recordView,
   searchByText,
+  fetchInterests,
 };

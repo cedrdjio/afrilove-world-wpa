@@ -1,42 +1,113 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { m } from "framer-motion";
-import { Check, Crown, X } from "lucide-react";
+import { AnimatePresence, m } from "framer-motion";
+import { Check, Crown, Loader2, Sparkles, X } from "lucide-react";
 
+import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
 import { cn } from "@/lib/utils";
 
+import { usePremiumPlans, useEntitlements } from "../hooks";
+import { formatPlanPrice, formatPerMonth } from "../format";
+import { BEST_PLAN_KEY } from "../constants";
+import type { PremiumPlan } from "../service";
+import { CheckoutSheet } from "./checkout-sheet";
+
 /**
- * Écran d'abonnement Premium (« 15 »). Architecture prête pour brancher Stripe /
- * Mobile Money : chaque `Plan` porte un `id` de tarif, la sélection est isolée
- * dans un état local, et le CTA appellera l'edge function `payment-initiate`.
+ * Écran d'abonnement Premium (« 15 »). Branché de bout en bout : plans réels
+ * (`premium_plans`), droits courants (`get_my_entitlements`) et achat Mobile
+ * Money via `CheckoutSheet`. Un aperçu statique reste servi hors connexion.
  */
-interface Plan {
-  id: string;
-  label: string;
-  price: string;
-  popular?: boolean;
-}
-
-const PLANS: Plan[] = [
-  { id: "monthly", label: "1 mois", price: "14,99€" },
-  { id: "biannual", label: "6 mois", price: "8,99€", popular: true },
-  { id: "annual", label: "12 mois", price: "6,49€" },
-];
-
 const PERKS = [
   "Likes illimités chaque jour",
   "Vois qui t'a déjà liké",
+  "Favoris illimités",
   "1 boost + 5 super likes par semaine",
 ];
+
+/** Modèle d'affichage d'un plan, indépendant de la source (réel ou démo). */
+interface PlanCard {
+  key: string;
+  label: string;
+  priceLabel: string;
+  perMonthLabel: string | null;
+  popular: boolean;
+}
+
+const DEMO_PLANS: PlanCard[] = [
+  {
+    key: "month_1m",
+    label: "1 mois",
+    priceLabel: "14,99 €",
+    perMonthLabel: null,
+    popular: false,
+  },
+  {
+    key: "quarter_3m",
+    label: "3 mois",
+    priceLabel: "26,99 €",
+    perMonthLabel: "8,99 € / mois",
+    popular: true,
+  },
+  {
+    key: "year_1y",
+    label: "12 mois",
+    priceLabel: "77,88 €",
+    perMonthLabel: "6,49 € / mois",
+    popular: false,
+  },
+];
+
+function toPlanCard(plan: PremiumPlan): PlanCard {
+  return {
+    key: plan.key,
+    label: plan.label,
+    priceLabel: formatPlanPrice(plan.priceCents, plan.currency),
+    perMonthLabel:
+      plan.durationDays > 31
+        ? `${formatPerMonth(plan.priceCents, plan.currency, plan.durationDays)} / mois`
+        : null,
+    popular: plan.key === BEST_PLAN_KEY,
+  };
+}
+
+const DATE_FMT = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
 
 export function PremiumScreen() {
   const router = useRouter();
   const haptic = useHaptics();
-  const [selected, setSelected] = useState("biannual");
-  const plan = PLANS.find((p) => p.id === selected) ?? PLANS[1]!;
+  const { isAuthenticated } = useAuth();
+
+  const { data: realPlans, isLoading: plansLoading } = usePremiumPlans();
+  const { data: entitlements } = useEntitlements();
+
+  const plans = useMemo<PlanCard[]>(() => {
+    if (!isAuthenticated) return DEMO_PLANS;
+    return (realPlans ?? []).map(toPlanCard);
+  }, [isAuthenticated, realPlans]);
+
+  const defaultKey =
+    plans.find((p) => p.popular)?.key ?? plans[0]?.key ?? BEST_PLAN_KEY;
+  const [selected, setSelected] = useState<string | null>(null);
+  const activeKey = selected ?? defaultKey;
+
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const selectedPlan = (realPlans ?? []).find((p) => p.key === activeKey);
+  const selectedCard = plans.find((p) => p.key === activeKey);
+
+  const isPremium = entitlements?.isPremium ?? false;
+  const loading = isAuthenticated && plansLoading;
+
+  const openCheckout = () => {
+    haptic("success");
+    if (isAuthenticated && selectedPlan) setCheckoutOpen(true);
+  };
 
   return (
     <div
@@ -79,68 +150,162 @@ export function PremiumScreen() {
           <p className="mt-2 text-sm text-white/70">Rencontre sans limites</p>
         </div>
 
-        <ul className="mt-9 flex flex-col gap-3">
-          {PERKS.map((perk) => (
-            <li key={perk} className="flex items-center gap-3 text-[0.95rem]">
-              <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15">
-                <Check
-                  className="text-brand-300 size-4"
-                  strokeWidth={3}
-                  aria-hidden
-                />
-              </span>
-              {perk}
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-9 grid grid-cols-3 gap-3">
-          {PLANS.map((p) => {
-            const active = p.id === selected;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => {
-                  haptic("light");
-                  setSelected(p.id);
-                }}
-                aria-pressed={active}
-                className={cn(
-                  "relative rounded-[var(--radius-lg)] border py-4 text-center transition-all",
-                  active
-                    ? "gradient-signature shadow-brand scale-105 border-white"
-                    : "border-white/20 bg-white/10",
-                )}
-              >
-                {p.popular && (
-                  <span className="text-primary font-display absolute -top-2.5 left-1/2 -translate-x-1/2 rounded-full bg-white px-2.5 py-0.5 text-[10px] font-extrabold whitespace-nowrap">
-                    POPULAIRE
+        {isPremium ? (
+          <PremiumActive until={entitlements?.premiumUntil ?? null} />
+        ) : (
+          <>
+            <ul className="mt-9 flex flex-col gap-3">
+              {PERKS.map((perk) => (
+                <li
+                  key={perk}
+                  className="flex items-center gap-3 text-[0.95rem]"
+                >
+                  <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15">
+                    <Check
+                      className="text-brand-300 size-4"
+                      strokeWidth={3}
+                      aria-hidden
+                    />
                   </span>
-                )}
-                <div className="font-display text-sm font-bold">{p.label}</div>
-                <div className="font-display mt-1.5 text-xl font-extrabold">
-                  {p.price}
-                </div>
-                <div className="mt-0.5 text-[11px] text-white/60">/ mois</div>
-              </button>
-            );
-          })}
-        </div>
+                  {perk}
+                </li>
+              ))}
+            </ul>
 
-        <div className="flex-1" />
+            {loading ? (
+              <div className="mt-9 grid h-40 place-items-center">
+                <Loader2 className="size-6 animate-spin text-white/70" />
+              </div>
+            ) : (
+              <div className="mt-9 flex flex-col gap-3">
+                {plans.map((p) => {
+                  const active = p.key === activeKey;
+                  return (
+                    <button
+                      key={p.key}
+                      type="button"
+                      onClick={() => {
+                        haptic("light");
+                        setSelected(p.key);
+                      }}
+                      aria-pressed={active}
+                      className={cn(
+                        "relative flex items-center justify-between rounded-[var(--radius-lg)] border px-5 py-4 text-left transition-all",
+                        active
+                          ? "gradient-signature shadow-brand border-white"
+                          : "border-white/20 bg-white/10",
+                      )}
+                    >
+                      {p.popular && (
+                        <span className="text-primary font-display absolute -top-2.5 left-5 rounded-full bg-white px-2.5 py-0.5 text-[10px] font-extrabold whitespace-nowrap">
+                          MEILLEUR PRIX
+                        </span>
+                      )}
+                      <div>
+                        <div className="font-display text-base font-bold">
+                          {p.label}
+                        </div>
+                        {p.perMonthLabel && (
+                          <div className="mt-0.5 text-[12px] text-white/70">
+                            {p.perMonthLabel}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-display text-xl font-extrabold">
+                          {p.priceLabel}
+                        </span>
+                        <span
+                          className={cn(
+                            "grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                            active
+                              ? "border-white bg-white"
+                              : "border-white/40",
+                          )}
+                        >
+                          {active && (
+                            <Check
+                              className="text-primary size-3"
+                              strokeWidth={4}
+                              aria-hidden
+                            />
+                          )}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
-        <button
-          type="button"
-          onClick={() => haptic("success")}
-          className="font-display text-primary flex h-14 items-center justify-center rounded-[var(--radius-pill)] bg-white text-[1.05rem] font-bold shadow-xl active:scale-[0.98]"
-        >
-          Continuer — {plan.price}/mois
-        </button>
-        <p className="mt-3.5 text-center text-xs text-white/60">
-          Sans engagement · résiliable à tout moment
-        </p>
+            <div className="min-h-6 flex-1" />
+
+            <button
+              type="button"
+              onClick={openCheckout}
+              disabled={loading || plans.length === 0}
+              className="font-display text-primary flex h-14 items-center justify-center gap-2 rounded-[var(--radius-pill)] bg-white text-[1.05rem] font-bold shadow-xl active:scale-[0.98] disabled:opacity-60"
+            >
+              <Sparkles className="size-5" aria-hidden />
+              {selectedCard
+                ? `Passer Premium · ${selectedCard.priceLabel}`
+                : "Passer Premium"}
+            </button>
+            <p className="mt-3.5 text-center text-xs text-white/60">
+              Paiement Mobile Money · sans engagement · résiliable à tout moment
+            </p>
+          </>
+        )}
       </m.div>
+
+      <AnimatePresence>
+        {checkoutOpen && selectedPlan && (
+          <CheckoutSheet
+            plan={selectedPlan}
+            onClose={() => setCheckoutOpen(false)}
+            onSuccess={() => {
+              setCheckoutOpen(false);
+              router.back();
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function PremiumActive({ until }: { until: string | null }) {
+  const untilLabel = until ? DATE_FMT.format(new Date(until)) : null;
+  return (
+    <div className="mt-9 flex flex-1 flex-col">
+      <div className="rounded-[var(--radius-lg)] border border-white/20 bg-white/10 p-6 text-center backdrop-blur-lg">
+        <span className="from-brand-400 to-brand-500 shadow-brand mx-auto grid size-12 place-items-center rounded-full bg-gradient-to-br">
+          <Sparkles className="size-6 text-white" aria-hidden />
+        </span>
+        <p className="font-display mt-3 text-lg font-extrabold">
+          Vous êtes Premium
+        </p>
+        {untilLabel && (
+          <p className="mt-1 text-sm text-white/70">
+            Actif jusqu&apos;au {untilLabel}
+          </p>
+        )}
+      </div>
+
+      <ul className="mt-6 flex flex-col gap-3">
+        {PERKS.map((perk) => (
+          <li key={perk} className="flex items-center gap-3 text-[0.95rem]">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15">
+              <Check
+                className="text-brand-300 size-4"
+                strokeWidth={3}
+                aria-hidden
+              />
+            </span>
+            {perk}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

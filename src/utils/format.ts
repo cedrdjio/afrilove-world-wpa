@@ -55,3 +55,30 @@ export function formatConversationTime(iso: string, now = new Date()): string {
 export function formatClockTime(iso: string): string {
   return TIME_FMT.format(new Date(iso));
 }
+
+/**
+ * Étiquette relative « à l'instant », « il y a 12 min », « il y a 3 h »,
+ * « il y a 2 j » (flux d'activité). Localisé fr-FR, sans dépendance.
+ */
+export function formatTimeAgo(iso: string, now = new Date()): string {
+  const diffMs = now.getTime() - new Date(iso).getTime();
+  const min = Math.round(diffMs / 60_000);
+  if (min < 1) return "À l'instant";
+  if (min < 60) return `Il y a ${min} min`;
+  const hours = Math.round(min / 60);
+  if (hours < 24) return `Il y a ${hours} h`;
+  const days = Math.round(hours / 24);
+  if (days < 7) return `Il y a ${days} j`;
+  const weeks = Math.round(days / 7);
+  return `Il y a ${weeks} sem`;
+}
+
+/** Groupe d'un instant pour le flux d'activité (aujourd'hui vs plus ancien). */
+export function isToday(iso: string, now = new Date()): boolean {
+  const d = new Date(iso);
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}

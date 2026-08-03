@@ -2,59 +2,120 @@
 
 import { useRef, useState } from "react";
 import Image from "next/image";
-import { Lightbulb, Plus, X } from "lucide-react";
+import { Lightbulb, Loader2, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { DEMO_ME } from "@/features/profiles/data";
+import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
 import { cn } from "@/lib/utils";
 
+import {
+  usePhotos,
+  useAddPhoto,
+  useDeletePhoto,
+  type ProfilePhoto,
+} from "../photos-hooks";
+
 const MAX_PHOTOS = 6;
 
+/** Élément de grille présenté (photo réelle ou aperçu de démo). */
+interface PhotoSlot {
+  key: string;
+  url: string;
+}
+
 /**
- * Gestion des photos (« 14 »). Grille jusqu'à 6 photos ; la première est la
- * principale. Ajout via sélecteur de fichier (aperçu local `objectURL`),
- * suppression, cases vides. L'upload réel passera par l'edge function
- * `upload-photo` + Supabase Storage.
+ * Gestion des photos (« 14 »). Données réelles (`profile_photos` + Edge
+ * Function `upload-photo`) pour un membre connecté, aperçu local pour la
+ * démo. L'UI (grille 6 cases, principale, cases vides) reste identique.
  */
 export function PhotosScreen() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <RealPhotos />;
+  return <DemoPhotos />;
+}
+
+function RealPhotos() {
+  const { data, isLoading } = usePhotos();
+  const addPhoto = useAddPhoto();
+  const deletePhoto = useDeletePhoto();
+
+  const photos: PhotoSlot[] = (data ?? []).map((p: ProfilePhoto) => ({
+    key: p.id,
+    url: p.url,
+  }));
+
+  return (
+    <PhotosView
+      photos={photos}
+      loading={isLoading}
+      busy={addPhoto.isPending}
+      onAdd={(file) => {
+        addPhoto.mutate(
+          { file, position: photos.length },
+          {
+            onError: () =>
+              toast.error("La photo n'a pas pu être ajoutée. Réessayez."),
+          },
+        );
+      }}
+      onRemove={(key) => {
+        deletePhoto.mutate(key, {
+          onError: () => toast.error("Suppression impossible. Réessayez."),
+        });
+      }}
+    />
+  );
+}
+
+function DemoPhotos() {
+  const [photos, setPhotos] = useState<PhotoSlot[]>(
+    DEMO_ME.photos.map((url, i) => ({ key: `demo-${i}`, url })),
+  );
+  return (
+    <PhotosView
+      photos={photos}
+      loading={false}
+      busy={false}
+      onAdd={(file) =>
+        setPhotos((prev) => [
+          ...prev,
+          { key: `demo-${Date.now()}`, url: URL.createObjectURL(file) },
+        ])
+      }
+      onRemove={(key) => setPhotos((prev) => prev.filter((p) => p.key !== key))}
+    />
+  );
+}
+
+function PhotosView({
+  photos,
+  loading,
+  busy,
+  onAdd,
+  onRemove,
+}: {
+  photos: PhotoSlot[];
+  loading: boolean;
+  busy: boolean;
+  onAdd: (file: File) => void;
+  onRemove: (key: string) => void;
+}) {
   const haptic = useHaptics();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [photos, setPhotos] = useState<string[]>([...DEMO_ME.photos]);
 
   const slots = Array.from({ length: MAX_PHOTOS }, (_, i) => photos[i] ?? null);
   const firstEmpty = photos.length;
 
-  const addPhoto = (file: File) => {
-    if (photos.length >= MAX_PHOTOS) return;
-    haptic("light");
-    setPhotos((prev) => [...prev, URL.createObjectURL(file)]);
-  };
-
-  const removePhoto = (index: number) => {
-    haptic("warning");
-    setPhotos((prev) => prev.filter((_, i) => i !== index));
-  };
-
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <PageHeader
-        title="Mes photos"
-        back
-        center
-        trailing={
-          <button
-            type="button"
-            className="text-primary shrink-0 text-sm font-bold"
-          >
-            Enregistrer
-          </button>
-        }
-      />
+      <PageHeader title="Mes photos" back center />
 
       <p className="text-muted-foreground mt-4 text-sm leading-relaxed">
-        Ajoute jusqu&apos;à {MAX_PHOTOS} photos. Glisse pour réordonner, la
-        première sera ta photo principale.
+        Ajoute jusqu&apos;à {MAX_PHOTOS} photos. La première sera ta photo
+        principale.
       </p>
 
       <input
@@ -64,7 +125,10 @@ export function PhotosScreen() {
         className="sr-only"
         onChange={(e) => {
           const file = e.target.files?.[0];
-          if (file) addPhoto(file);
+          if (file) {
+            haptic("light");
+            onAdd(file);
+          }
           e.target.value = "";
         }}
       />
@@ -74,16 +138,16 @@ export function PhotosScreen() {
           if (photo) {
             return (
               <div
-                key={index}
+                key={photo.key}
                 className="shadow-soft relative aspect-3/4 overflow-hidden rounded-[var(--radius-md)]"
               >
                 <Image
-                  src={photo}
+                  src={photo.url}
                   alt={index === 0 ? "Photo principale" : `Photo ${index + 1}`}
                   fill
                   sizes="(max-width: 448px) 30vw, 130px"
                   className="object-cover"
-                  unoptimized={photo.startsWith("blob:")}
+                  unoptimized={photo.url.startsWith("blob:")}
                 />
                 {index === 0 ? (
                   <span className="gradient-signature font-display absolute top-2 left-2 rounded-[var(--radius-pill)] px-2.5 py-1 text-[10.5px] font-bold text-white">
@@ -92,7 +156,10 @@ export function PhotosScreen() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => removePhoto(index)}
+                    onClick={() => {
+                      haptic("warning");
+                      onRemove(photo.key);
+                    }}
                     aria-label={`Supprimer la photo ${index + 1}`}
                     className="bg-brand-950/55 absolute right-1.5 bottom-1.5 grid size-6 place-items-center rounded-full text-white backdrop-blur-sm"
                   >
@@ -104,12 +171,13 @@ export function PhotosScreen() {
           }
 
           const isNext = index === firstEmpty;
+          const showSpinner = isNext && busy;
           return (
             <button
-              key={index}
+              key={`empty-${index}`}
               type="button"
               onClick={() => inputRef.current?.click()}
-              disabled={!isNext}
+              disabled={!isNext || busy || loading}
               aria-label="Ajouter une photo"
               className={cn(
                 "border-accent/50 grid aspect-3/4 place-items-center rounded-[var(--radius-md)] border-2 border-dashed bg-white/40 disabled:opacity-60 dark:bg-white/5",
@@ -123,7 +191,11 @@ export function PhotosScreen() {
                     : "bg-accent/20 text-accent",
                 )}
               >
-                <Plus className="size-5" strokeWidth={2.4} aria-hidden />
+                {showSpinner ? (
+                  <Loader2 className="size-5 animate-spin" aria-hidden />
+                ) : (
+                  <Plus className="size-5" strokeWidth={2.4} aria-hidden />
+                )}
               </span>
             </button>
           );

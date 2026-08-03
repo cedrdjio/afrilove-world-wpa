@@ -10,6 +10,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { AuthScreen } from "@/features/auth/components/auth-screen";
+import { GoogleButton } from "@/features/auth/components/google-button";
 import { registerSchema, type RegisterValues } from "@/features/auth/schema";
 import { authErrorMessage, signUpWithPassword } from "@/features/auth/service";
 import { Button } from "@/components/ui/button";
@@ -228,6 +229,14 @@ export default function RegisterPage() {
         >
           {pending ? "Création…" : "Créer mon compte"}
         </Button>
+
+        <div className="flex items-center gap-3">
+          <span className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-xs font-medium">ou</span>
+          <span className="bg-border h-px flex-1" />
+        </div>
+
+        <GoogleButton next={ROUTES.onboarding} />
       </form>
     </AuthScreen>
   );

@@ -15,7 +15,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { ROUTES } from "@/constants/routes";
-import { DEMO_ME } from "@/features/profiles/data";
 import { useSettingsStore } from "@/store/settings-store";
 
 /**
@@ -24,7 +23,15 @@ import { useSettingsStore } from "@/store/settings-store";
  * sur le `useSettingsStore` ; les lignes de navigation pointent vers leurs
  * écrans dédiés.
  */
-export function SettingsScreen({ onSignOut }: { onSignOut: () => void }) {
+export function SettingsScreen({
+  name,
+  avatar,
+  onSignOut,
+}: {
+  name: string;
+  avatar: string | null;
+  onSignOut: () => void;
+}) {
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <PageHeader title="Réglages" />
@@ -34,16 +41,9 @@ export function SettingsScreen({ onSignOut }: { onSignOut: () => void }) {
           href={ROUTES.profile}
           className="glass flex items-center gap-3.5 rounded-[var(--radius-lg)] p-4"
         >
-          <Avatar
-            src={DEMO_ME.avatar}
-            alt={DEMO_ME.firstName}
-            size={56}
-            rounded="lg"
-          />
+          <Avatar src={avatar} alt={name} size={56} rounded="lg" />
           <div className="min-w-0 flex-1">
-            <div className="font-display truncate font-bold">
-              {DEMO_ME.firstName} {DEMO_ME.lastName}
-            </div>
+            <div className="font-display truncate font-bold">{name}</div>
             <div className="text-muted-foreground text-sm">
               Modifier mon compte
             </div>

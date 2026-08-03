@@ -22,6 +22,7 @@ export function useDiscoveryFeed(mode: DiscoveryFeedMode) {
   const ageMax = useDiscoveryFilters((s) => s.ageMax);
   const verifiedOnly = useDiscoveryFilters((s) => s.verifiedOnly);
   const interestIds = useDiscoveryFilters((s) => s.interestIds);
+  const maxDistanceKm = useDiscoveryFilters((s) => s.maxDistanceKm);
 
   return useQuery({
     queryKey: [
@@ -33,6 +34,7 @@ export function useDiscoveryFeed(mode: DiscoveryFeedMode) {
       ageMax,
       verifiedOnly,
       interestIds,
+      maxDistanceKm,
     ],
     queryFn: () =>
       discoveryService.searchProfiles({
@@ -43,6 +45,7 @@ export function useDiscoveryFeed(mode: DiscoveryFeedMode) {
         verifiedOnly,
         mode,
         interestIds,
+        maxDistanceKm,
       }),
     enabled: isAuthenticated,
     staleTime: 60_000,
@@ -58,6 +61,7 @@ export function useDiscoveryCount() {
   const ageMax = useDiscoveryFilters((s) => s.ageMax);
   const verifiedOnly = useDiscoveryFilters((s) => s.verifiedOnly);
   const interestIds = useDiscoveryFilters((s) => s.interestIds);
+  const maxDistanceKm = useDiscoveryFilters((s) => s.maxDistanceKm);
 
   return useQuery({
     queryKey: [
@@ -68,6 +72,7 @@ export function useDiscoveryCount() {
       ageMax,
       verifiedOnly,
       interestIds,
+      maxDistanceKm,
     ],
     queryFn: () =>
       discoveryService.countProfiles({
@@ -77,9 +82,21 @@ export function useDiscoveryCount() {
         country,
         verifiedOnly,
         interestIds,
+        maxDistanceKm,
       }),
     enabled: isAuthenticated,
     staleTime: 30_000,
+  });
+}
+
+/** Centres d'intérêt actifs — cases à cocher de l'écran Filtres. */
+export function useInterests() {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["interests"],
+    queryFn: () => discoveryService.fetchInterests(),
+    enabled: isAuthenticated,
+    staleTime: 10 * 60_000,
   });
 }
 

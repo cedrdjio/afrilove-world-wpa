@@ -5,12 +5,16 @@ import { Check, Heart, Star, UserRound } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
+import { useAuth } from "@/providers/auth-provider";
+import { formatTimeAgo, isToday } from "@/utils/format";
+
 import {
   DEMO_ACTIVITY,
   type ActivityGroup,
   type ActivityItem,
   type ActivityType,
 } from "../data";
+import { useNotifications, useMarkAllNotificationsRead } from "../hooks";
 
 const GROUP_LABELS: Record<ActivityGroup, string> = {
   today: "AUJOURD'HUI",
@@ -40,10 +44,49 @@ const BADGE: Record<
 };
 
 /**
- * Flux d'activité / notifications (« 13 »). Regroupé par période, chaque entrée
- * porte une pastille typée (match, super like, message, vues).
+ * Flux d'activité / notifications (« 13 »). Données réelles (`notifications`)
+ * pour un membre connecté, démo pour l'aperçu. La présentation (regroupement
+ * par période, pastilles typées) reste identique.
  */
 export function ActivityScreen() {
+  const { isAuthenticated } = useAuth();
+  if (isAuthenticated) return <RealActivity />;
+  return <ActivityView items={DEMO_ACTIVITY} onReadAll={undefined} />;
+}
+
+function RealActivity() {
+  const { data } = useNotifications();
+  const markAll = useMarkAllNotificationsRead();
+
+  const items: ActivityItem[] = (data ?? []).map((n) => ({
+    id: n.id,
+    type: n.type,
+    ...(n.avatarUrl
+      ? { actor: { firstName: n.title, photo: n.avatarUrl } }
+      : {}),
+    lead: n.title,
+    text: n.body ? ` ${n.body}` : "",
+    time: formatTimeAgo(n.createdAt),
+    group: isToday(n.createdAt) ? "today" : "week",
+  }));
+
+  const hasUnread = (data ?? []).some((n) => n.readAt === null);
+
+  return (
+    <ActivityView
+      items={items}
+      onReadAll={hasUnread ? () => markAll.mutate() : undefined}
+    />
+  );
+}
+
+function ActivityView({
+  items,
+  onReadAll,
+}: {
+  items: ActivityItem[];
+  onReadAll: (() => void) | undefined;
+}) {
   const groups = ["today", "week"] as const;
 
   return (
@@ -51,33 +94,56 @@ export function ActivityScreen() {
       <PageHeader
         title="Activité"
         trailing={
-          <button
-            type="button"
-            className="text-primary shrink-0 text-sm font-bold"
-          >
-            Tout lire
-          </button>
+          onReadAll ? (
+            <button
+              type="button"
+              onClick={onReadAll}
+              className="text-primary shrink-0 text-sm font-bold"
+            >
+              Tout lire
+            </button>
+          ) : undefined
         }
       />
 
-      <div className="mt-6 space-y-2.5">
-        {groups.map((group) => {
-          const items = DEMO_ACTIVITY.filter((i) => i.group === group);
-          if (items.length === 0) return null;
-          return (
-            <section key={group}>
-              <h2 className="text-subtle-foreground font-display mt-4 mb-2 text-xs font-bold tracking-wide">
-                {GROUP_LABELS[group]}
-              </h2>
-              <div className="space-y-2.5">
-                {items.map((item, i) => (
-                  <ActivityRow key={item.id} item={item} index={i} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+      {items.length === 0 ? (
+        <EmptyActivity />
+      ) : (
+        <div className="mt-6 space-y-2.5">
+          {groups.map((group) => {
+            const groupItems = items.filter((i) => i.group === group);
+            if (groupItems.length === 0) return null;
+            return (
+              <section key={group}>
+                <h2 className="text-subtle-foreground font-display mt-4 mb-2 text-xs font-bold tracking-wide">
+                  {GROUP_LABELS[group]}
+                </h2>
+                <div className="space-y-2.5">
+                  {groupItems.map((item, i) => (
+                    <ActivityRow key={item.id} item={item} index={i} />
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EmptyActivity() {
+  return (
+    <div className="mt-24 flex flex-col items-center text-center">
+      <span className="bg-accent/15 grid size-16 place-items-center rounded-full">
+        <Heart className="text-primary size-8" aria-hidden />
+      </span>
+      <p className="font-display mt-4 text-lg font-bold">
+        Rien de neuf pour l&apos;instant
+      </p>
+      <p className="text-muted-foreground mt-1 max-w-xs text-sm">
+        Tes matchs, likes et messages apparaîtront ici.
+      </p>
     </div>
   );
 }
@@ -94,7 +160,7 @@ function ActivityRow({ item, index }: { item: ActivityItem; index: number }) {
       <div className="relative shrink-0">
         {item.actor ? (
           <Avatar
-            src={item.actor.photos[0]}
+            src={item.actor.photo}
             alt={item.actor.firstName}
             size={48}
             rounded="lg"

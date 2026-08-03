@@ -79,6 +79,27 @@ export async function updatePassword(
   return client.auth.updateUser({ password: newPassword });
 }
 
+/**
+ * Connexion via Google (OAuth PKCE). Le retour passe par `/auth/callback`, qui
+ * échange le code contre une session puis route vers `next` (les gardes des
+ * pages arbitrent onboarding vs découverte). Inscription et connexion partagent
+ * ce flux — Google crée le compte au premier passage.
+ */
+export async function signInWithGoogle(
+  client: SupabaseBrowserClient,
+  next = "/discover",
+) {
+  const nextPath = next.startsWith("/") ? next : "/discover";
+  return client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: redirectTo(
+        `/auth/callback?next=${encodeURIComponent(nextPath)}`,
+      ),
+    },
+  });
+}
+
 export async function signOut(client: SupabaseBrowserClient) {
   return client.auth.signOut();
 }

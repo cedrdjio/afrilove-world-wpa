@@ -40,6 +40,7 @@ export function ProfileDetail({
   onPass,
   onLike,
   onMessage,
+  onOptions,
   messageLabel = "Envoyer un message",
 }: {
   view: ProfileDetailView;
@@ -47,6 +48,8 @@ export function ProfileDetail({
   onPass: () => void;
   onLike: () => void;
   onMessage: () => void;
+  /** Ouvre la feuille d'actions (favoris / bloquer / signaler). */
+  onOptions?: () => void;
   messageLabel?: string;
 }) {
   return (
@@ -76,7 +79,7 @@ export function ProfileDetail({
           <IconButton tone="glassDark" aria-label="Retour" onClick={onBack}>
             <ChevronLeft className="size-5" aria-hidden />
           </IconButton>
-          <IconButton tone="glassDark" aria-label="Options">
+          <IconButton tone="glassDark" aria-label="Options" onClick={onOptions}>
             <MoreHorizontal className="size-5" aria-hidden />
           </IconButton>
         </div>

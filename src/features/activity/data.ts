@@ -1,14 +1,19 @@
 import { DEMO_PROFILES } from "@/features/profiles/data";
-import type { Profile } from "@/features/profiles/types";
 
 export type ActivityType = "match" | "superlike" | "message" | "views";
 export type ActivityGroup = "today" | "week";
+
+/** Origine d'une activité (avatar) — indépendant du modèle Profile complet. */
+export interface ActivityActor {
+  firstName: string;
+  photo: string | null;
+}
 
 export interface ActivityItem {
   id: string;
   type: ActivityType;
   /** Profil à l'origine (avatar) ; absent pour les agrégats (« vues »). */
-  actor?: Profile;
+  actor?: ActivityActor;
   /** Fragment mis en gras au début du libellé. */
   lead: string;
   text: string;
@@ -16,10 +21,10 @@ export interface ActivityItem {
   group: ActivityGroup;
 }
 
-const p = (id: string): Profile => {
+const p = (id: string): ActivityActor => {
   const found = DEMO_PROFILES.find((x) => x.id === id);
   if (!found) throw new Error(`Profil introuvable : ${id}`);
-  return found;
+  return { firstName: found.firstName, photo: found.photos[0] ?? null };
 };
 
 /** Flux d'activité de démonstration (« 13 »). */
