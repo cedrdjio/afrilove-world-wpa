@@ -1,4 +1,4 @@
-import { type AuthError } from "@supabase/supabase-js";
+import { AuthApiError, type AuthError } from "@supabase/supabase-js";
 
 import { type createClient } from "@/services/supabase/client";
 import { env } from "@/lib/env";
@@ -32,6 +32,14 @@ export function authErrorMessage(error: AuthError | null): string | null {
     return "Un compte existe déjà avec cette adresse.";
   if (msg.includes("rate limit") || msg.includes("too many"))
     return "Trop de tentatives. Réessayez dans quelques instants.";
+  if (
+    msg.includes("otp_expired") ||
+    msg.includes("token has expired") ||
+    msg.includes("invalid token") ||
+    (msg.includes("token") && msg.includes("expired")) ||
+    (msg.includes("otp") && msg.includes("invalid"))
+  )
+    return "Code invalide ou expiré. Demandez-en un nouveau.";
   if (msg.includes("password"))
     return "Mot de passe invalide (8 caractères min).";
   if (msg.includes("network") || msg.includes("fetch"))
@@ -53,13 +61,78 @@ export async function signUpWithPassword(
   client: SupabaseBrowserClient,
   input: { email: string; password: string; firstName: string },
 ) {
-  return client.auth.signUp({
+  const result = await client.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: {
       data: { first_name: input.firstName.trim() },
       emailRedirectTo: redirectTo("/auth/callback"),
     },
+  });
+  // Confirmation e-mail activée : GoTrue renvoie (anti-énumération) un faux
+  // utilisateur sans identités au lieu d'une erreur quand l'adresse est déjà
+  // prise. Sans ce garde-fou, on enverrait la personne saisir un code qui
+  // n'arrivera jamais — on le remonte comme l'erreur « déjà inscrit ».
+  const { data, error } = result;
+  if (
+    !error &&
+    data.user &&
+    !data.session &&
+    (data.user.identities?.length ?? 0) === 0
+  ) {
+    return {
+      data: { user: null, session: null },
+      error: new AuthApiError(
+        "User already registered",
+        400,
+        "user_already_exists",
+      ),
+    };
+  }
+  return result;
+}
+
+/**
+ * Vérifie le code à 6 chiffres reçu par e-mail après l'inscription (type
+ * `signup`). C'est le chemin « par code » : il ne dépend pas d'un aller-retour
+ * navigateur → app comme le ferait le lien magique. Le succès ouvre la session.
+ */
+export async function verifySignupOtp(
+  client: SupabaseBrowserClient,
+  input: { email: string; token: string },
+) {
+  return client.auth.verifyOtp({
+    email: input.email.trim().toLowerCase(),
+    token: input.token.trim(),
+    type: "signup",
+  });
+}
+
+/**
+ * Vérifie le code de récupération (type `recovery`) saisi dans l'app. Une fois
+ * validé, une session de récupération est ouverte ; l'écran « Nouveau mot de
+ * passe » prend le relais.
+ */
+export async function verifyRecoveryOtp(
+  client: SupabaseBrowserClient,
+  input: { email: string; token: string },
+) {
+  return client.auth.verifyOtp({
+    email: input.email.trim().toLowerCase(),
+    token: input.token.trim(),
+    type: "recovery",
+  });
+}
+
+/** Renvoie un nouveau code d'inscription (invalide le précédent). */
+export async function resendSignupOtp(
+  client: SupabaseBrowserClient,
+  emailAddress: string,
+) {
+  return client.auth.resend({
+    type: "signup",
+    email: emailAddress.trim().toLowerCase(),
+    options: { emailRedirectTo: redirectTo("/auth/callback") },
   });
 }
 

@@ -1,10 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { m } from "framer-motion";
-import { MailCheck } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -23,9 +21,9 @@ import { useSupabase } from "@/providers/supabase-provider";
 
 export default function ForgotPasswordPage() {
   const supabase = useSupabase();
+  const router = useRouter();
   const haptic = useHaptics();
   const [pending, setPending] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const {
     register,
@@ -38,7 +36,8 @@ export default function ForgotPasswordPage() {
 
   async function onSubmit(values: ForgotPasswordValues) {
     setPending(true);
-    const { error } = await sendPasswordReset(supabase, values.email);
+    const email = values.email.trim().toLowerCase();
+    const { error } = await sendPasswordReset(supabase, email);
     setPending(false);
     if (error) {
       haptic("error");
@@ -46,40 +45,16 @@ export default function ForgotPasswordPage() {
       return;
     }
     haptic("success");
-    // Message identique qu'un compte existe ou non (anti-énumération).
-    setSentTo(values.email.trim().toLowerCase());
-  }
-
-  if (sentTo) {
-    return (
-      <AuthScreen title="E-mail envoyé" backTo={ROUTES.login}>
-        <m.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-1 flex-col items-center justify-center text-center"
-        >
-          <span className="gradient-signature shadow-brand grid size-20 place-items-center rounded-full text-white">
-            <MailCheck className="size-9" aria-hidden />
-          </span>
-          <p className="text-muted-foreground mt-6 text-[0.95rem] leading-relaxed">
-            Si un compte est associé à{" "}
-            <span className="text-foreground font-semibold">{sentTo}</span>, un
-            lien de réinitialisation vient d’être envoyé.
-          </p>
-          <Link href={ROUTES.login} className="mt-8 w-full">
-            <Button size="lg" block variant="secondary">
-              Revenir à la connexion
-            </Button>
-          </Link>
-        </m.div>
-      </AuthScreen>
+    // Un code de récupération a été envoyé → saisie in-app (pas de lien).
+    router.replace(
+      `${ROUTES.verifyOtp}?type=recovery&email=${encodeURIComponent(email)}`,
     );
   }
 
   return (
     <AuthScreen
       title="Mot de passe oublié"
-      subtitle="Saisissez votre e-mail : nous vous enverrons un lien pour choisir un nouveau mot de passe."
+      subtitle="Saisissez votre e-mail : nous vous enverrons un code pour choisir un nouveau mot de passe."
       backTo={ROUTES.login}
     >
       <form
@@ -110,7 +85,7 @@ export default function ForgotPasswordPage() {
           disabled={pending}
           className="mt-auto"
         >
-          {pending ? "Envoi…" : "Envoyer le lien"}
+          {pending ? "Envoi…" : "Envoyer le code"}
         </Button>
       </form>
     </AuthScreen>

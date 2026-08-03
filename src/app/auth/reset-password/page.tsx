@@ -65,13 +65,13 @@ export default function ResetPasswordPage() {
   if (!user) {
     return (
       <AuthScreen
-        title="Lien invalide ou expiré"
-        subtitle="Ce lien de réinitialisation n’est plus valide. Demandez-en un nouveau."
+        title="Session expirée"
+        subtitle="Votre code de récupération n’est plus valide. Demandez-en un nouveau."
         backTo={ROUTES.login}
       >
         <Link href={ROUTES.forgotPassword} className="mt-auto w-full">
           <Button size="lg" block>
-            Demander un nouveau lien
+            Demander un nouveau code
           </Button>
         </Link>
       </AuthScreen>

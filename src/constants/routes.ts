@@ -13,6 +13,7 @@ export const ROUTES = {
   register: "/auth/register",
   forgotPassword: "/auth/forgot-password",
   resetPassword: "/auth/reset-password",
+  verifyOtp: "/auth/verify",
   authCallback: "/auth/callback",
 
   // Parcours & application
