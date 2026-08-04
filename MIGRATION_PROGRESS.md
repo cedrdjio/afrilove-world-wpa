@@ -4,17 +4,22 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~8 %**
-_(auth + onboarding partiels, socle providers/UI/PWA en place ; cœur métier à migrer)_
+**Avancement global : ~11 %**
+_(fondations Jalon 1 posées ; auth + onboarding partiels ; cœur métier à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Phase 1 (audit) & Phase 2 (plan) livrées.
+Dernière mise à jour : 2026-08-04 — Jalon 1 (Architecture & fondations) livré.
+
+### Décisions du Jalon 0 (validées)
+- **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
+- **Notifications web** : **Web Push complet** (VAPID + Service Worker) au Jalon 10.
+- **CamerPay web** : URLs de retour `/premium/callback` + webhooks (Edge Functions déjà présentes).
 
 ## Statut des jalons
 
 | Jalon | Domaine | Statut |
 | --- | --- | --- |
-| 0 | Cadrage & décisions (admin, web push, CamerPay web) | ⏳ à valider |
-| 1 | Architecture & fondations | 🟡 partiel |
+| 0 | Cadrage & décisions (admin, web push, CamerPay web) | ✅ validé |
+| 1 | Architecture & fondations | ✅ terminé |
 | 2 | Design System (glass lavande) | 🟡 partiel |
 | 3 | Navigation & Shell | 🟡 partiel |
 | 4 | Authentification | 🟡 partiel |
@@ -127,5 +132,40 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 ### 2026-08-04 — Phase 1 & 2
 - Audit complet du mobile produit (`docs/migration/PHASE1_AUDIT.md`).
 - Plan de migration en 15 jalons (`docs/migration/PHASE2_MIGRATION_PLAN.md`).
-- Ce tracker initialisé. **En attente de validation du plan et des décisions
-  du Jalon 0 (admin, web push, CamerPay web) avant de démarrer le code du Jalon 1.**
+- Ce tracker initialisé.
+
+### 2026-08-04 — Jalon 1 : Architecture & fondations ✅
+**Analyse d'écart** : les fondations web (`@supabase/ssr`, proxy, providers)
+étaient saines mais divergeaient du mobile sur : config du QueryClient (cache,
+retry, gestion session expirée), absence de normalisation d'erreurs partagée,
+absence de journal client, clés de cache éparses, carte de routes incomplète
+(~10 vs ~150 destinations).
+
+**Fichiers créés**
+- `src/lib/errors.ts` — port fidèle de `errorMapping` mobile (`AppError`,
+  `mapToAppError`, `logAppErrorDetails`).
+- `src/lib/query-keys.ts` — clés TanStack Query centralisées (miroir du mobile)
+  + racines pour invalidations croisées identiques.
+- `src/services/log-service.ts` — port de `logService` (`logEvent` → `client_logs`,
+  fire-and-forget).
+
+**Fichiers modifiés**
+- `src/providers/query-provider.tsx` — parité mobile (staleTime 2 min, gcTime
+  15 min, retry 1) + déconnexion auto sur `session_expired` (QueryCache +
+  MutationCache) + `onlineManager` câblé sur `online/offline` du navigateur.
+- `src/constants/routes.ts` — carte de routes complète (auth, onboarding,
+  discover, matches, messages, profile, edit-profile, search, premium, kyc,
+  notifications, settings, blocked-users, reports) + fabriques dynamiques
+  (`profile(id)`, `chat(id)`, `legal(key)`…) + `PROTECTED_PREFIXES` étendus.
+- `src/features/README.md` — conventions alignées sur les 15 modules mobiles
+  (structure `components/hooks/services/stores/schema/types/index`).
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) · `pnpm build` ✅.
+**Régressions** : aucune (changements additifs ; routes existantes préservées,
+`/likes` conservé le temps de la réconciliation nav au Jalon 3).
+
+**Note de suivi** : réconcilier `/likes` (web) ↔ `/matches` (mobile) au Jalon 3
+lors de la refonte du `BottomNav`.
+
+➡️ **Prochaine étape : Jalon 2 — Design System (charte glass lavande).**
+En attente de feu vert avant de démarrer le code du Jalon 2.
