@@ -122,7 +122,7 @@ export function SwipeDeckView({
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="relative min-h-0 flex-1">
         {loading && !top && (
-          <div className="size-full animate-pulse rounded-[var(--radius-xl)] border border-white/10 bg-white/5" />
+          <div className="border-border bg-muted size-full animate-pulse rounded-[28px] border" />
         )}
 
         {!loading && !top && (
@@ -158,33 +158,33 @@ export function SwipeDeckView({
       </div>
 
       {top && (
-        <div className="relative z-20 -mt-8 flex items-center justify-center gap-5 pb-1">
+        <div className="relative z-20 -mt-9 flex items-center justify-center gap-4 pb-1">
           <ActionButton
             label="Revenir en arrière"
             onClick={onRewind}
             disabled={!canRewind}
-            className="size-12 text-white/80"
+            className="border-border bg-card text-warning size-12 border shadow-[0_8px_22px_-8px_rgba(46,36,64,0.45)]"
           >
             <RotateCcw className="size-5" aria-hidden />
           </ActionButton>
           <ActionButton
             label="Passer"
             onClick={() => onDecide("pass")}
-            className="size-16 text-white"
+            className="size-16 bg-[#2e2440] text-white shadow-[0_12px_28px_-8px_rgba(46,36,64,0.6)]"
           >
-            <X className="size-7" strokeWidth={2.4} aria-hidden />
+            <X className="size-7" strokeWidth={2.6} aria-hidden />
           </ActionButton>
           <ActionButton
             label="J'aime"
             onClick={() => onDecide("like")}
-            className="gradient-signature shadow-brand size-[4.75rem] scale-105 border-white/30 text-white"
+            className="gradient-signature shadow-brand size-[4.75rem] scale-105 text-white"
           >
             <Heart className="size-9 fill-current" aria-hidden />
           </ActionButton>
           <ActionButton
             label="Super like"
             onClick={() => onDecide("super")}
-            className="text-brand-300 size-12"
+            className="border-border bg-card text-primary size-12 border shadow-[0_8px_22px_-8px_rgba(46,36,64,0.45)]"
           >
             <Sparkles className="size-5 fill-current" aria-hidden />
           </ActionButton>
@@ -255,7 +255,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "grid place-items-center rounded-full border border-white/25 bg-white/10 backdrop-blur-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:outline-none active:scale-90 disabled:opacity-40",
+        "focus-visible:ring-ring grid place-items-center rounded-full transition-all duration-200 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none active:scale-90 disabled:opacity-40",
         className,
       )}
     >
@@ -276,17 +276,19 @@ function EmptyState({
   onAction: () => void;
 }) {
   return (
-    <div className="grid size-full place-items-center rounded-[var(--radius-xl)] border border-white/15 bg-white/5 p-8 text-center">
+    <div className="border-border bg-card grid size-full place-items-center rounded-[28px] border p-8 text-center shadow-[0_20px_50px_-24px_rgba(46,36,64,0.4)]">
       <div>
-        <Heart className="text-brand-300 mx-auto size-12" aria-hidden />
-        <h2 className="font-display mt-4 text-xl font-bold text-white">
+        <span className="bg-accent/15 mx-auto grid size-16 place-items-center rounded-full">
+          <Heart className="text-primary size-8" aria-hidden />
+        </span>
+        <h2 className="font-display text-foreground mt-4 text-xl font-bold">
           {title}
         </h2>
-        <p className="mt-2 text-sm text-white/70">{subtitle}</p>
+        <p className="text-muted-foreground mt-2 text-sm">{subtitle}</p>
         <button
           type="button"
           onClick={onAction}
-          className="mt-6 rounded-[var(--radius-pill)] bg-white/15 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-lg"
+          className="gradient-signature shadow-brand mt-6 rounded-[var(--radius-pill)] px-5 py-2.5 text-sm font-semibold text-white"
         >
           {actionLabel}
         </button>

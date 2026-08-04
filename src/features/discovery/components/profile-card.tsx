@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 import type { DeckCardModel } from "../card";
 
 /**
- * Carte profil (« 04 Découverte ») — présentation pure façon maquette premium :
- * photo plein cadre sur fond nuit, dégradés de lisibilité fins, identité posée
- * directement sur le voile bas (sans boîte de verre), pastille de compatibilité
- * discrète et chevron d'ouverture. Le comportement de swipe / le lien vers le
- * détail sont pilotés par le parent (`SwipeDeck`).
+ * Carte profil (« 04 Découverte ») — présentation pure façon maquette PURELY :
+ * photo plein cadre aux coins arrondis, voile de lisibilité fin en bas, identité
+ * posée directement dessus (nom + âge, chevron « ouvrir », distance) et pastille
+ * de compatibilité claire en haut. Le swipe / le lien vers le détail sont pilotés
+ * par le parent (`SwipeDeck`).
  */
 export function ProfileCard({
   card,
@@ -28,7 +28,7 @@ export function ProfileCard({
   return (
     <div
       className={cn(
-        "bg-brand-950 relative size-full overflow-hidden rounded-[28px] shadow-[0_30px_70px_-24px_rgba(0,0,0,0.75)] ring-1 ring-white/10",
+        "bg-muted relative size-full overflow-hidden rounded-[28px] shadow-[0_24px_60px_-20px_rgba(46,36,64,0.45)] ring-1 ring-black/5",
         className,
       )}
     >
@@ -50,48 +50,41 @@ export function ProfileCard({
         </div>
       )}
 
-      {/* Voiles de lisibilité : léger en haut (contrôles), dense en bas (texte). */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/40 to-transparent" />
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/85 via-black/40 via-45% to-transparent" />
+      {/* Voile de lisibilité — dense en bas pour asseoir le texte. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
-      {/* Compatibilité — pastille sobre en verre sombre. */}
-      <div className="absolute top-3.5 right-3.5">
-        <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] border border-white/20 bg-black/35 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-md">
-          <Star className="text-accent size-3.5 fill-current" aria-hidden />
+      {/* Compatibilité — pastille claire en haut à droite (façon « New Here »). */}
+      <div className="absolute top-4 right-4">
+        <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-white/90 px-3 py-1.5 text-xs font-extrabold text-[#2e2440] shadow-sm backdrop-blur-md">
+          <Star className="text-primary size-3.5 fill-current" aria-hidden />
           {card.compatibility}%
         </span>
       </div>
 
-      {/* Identité posée sur le voile — pas de boîte, look éditorial. */}
-      <div className="absolute inset-x-5 bottom-5 flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="font-display truncate text-[1.75rem] leading-tight font-extrabold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
-              {card.firstName}, {card.age}
-            </h2>
-            {card.verified && <VerifiedBadge size={22} />}
-          </div>
-          {hasLocation && (
-            <p className="mt-1.5 flex items-center gap-1.5 text-sm font-medium text-white/85">
-              <MapPin className="size-4 shrink-0" aria-hidden />
-              <span className="truncate">
-                {card.city}
-                {card.city && card.distanceKm != null ? " · " : ""}
-                {card.distanceKm != null
-                  ? `à ${Math.round(card.distanceKm)} km`
-                  : ""}
-              </span>
-            </p>
-          )}
+      {/* Identité posée sur le voile — nom + chevron « ouvrir », puis distance. */}
+      <div className="absolute inset-x-5 bottom-5">
+        <div className="flex items-center gap-2">
+          <h2 className="font-display truncate text-[1.9rem] leading-none font-extrabold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+            {card.firstName}, {card.age}
+          </h2>
+          {card.verified && <VerifiedBadge size={22} />}
+          <ChevronDown
+            className="size-6 shrink-0 text-white/80 drop-shadow"
+            aria-hidden
+          />
         </div>
-
-        {/* Affordance « ouvrir le profil » — décorative (le lien enveloppe la carte). */}
-        <span
-          aria-hidden
-          className="grid size-11 shrink-0 place-items-center rounded-full border border-white/25 bg-white/15 text-white backdrop-blur-md"
-        >
-          <ChevronDown className="size-5" />
-        </span>
+        {hasLocation && (
+          <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-white/85">
+            <MapPin className="size-4 shrink-0" aria-hidden />
+            <span className="truncate">
+              {card.city}
+              {card.city && card.distanceKm != null ? " · " : ""}
+              {card.distanceKm != null
+                ? `à ${Math.round(card.distanceKm)} km`
+                : ""}
+            </span>
+          </p>
+        )}
       </div>
     </div>
   );

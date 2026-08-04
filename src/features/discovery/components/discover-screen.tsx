@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { m } from "framer-motion";
-import { Flame, MapPin, SlidersHorizontal, Menu } from "lucide-react";
+import { Flame, MapPin, SlidersHorizontal } from "lucide-react";
 
-import { IconButton } from "@/components/ui/icon-button";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
@@ -17,40 +16,33 @@ import { RealSwipeDeck } from "./real-swipe-deck";
 type Feed = "foryou" | "nearby";
 
 /**
- * Écran de découverte immersif (« 04 »). Fond nuit premium (indépendant du
- * thème), en-tête épuré avec sélecteur segmenté « Pour toi / À proximité »,
+ * Écran de découverte (« 04 ») façon maquette PURELY : fond clair épuré qui
+ * suit le thème (clair par défaut, sombre pilotable depuis les Réglages),
+ * en-tête minimal (sélecteur « Pour toi / À proximité » + filtres uniquement),
  * deck de swipe et overlay de match. Le vivier est déjà borné par le rayon
- * géographique (filtres) ; la vue carte « À proximité » arrivera plus tard —
- * pour l'instant les deux onglets présentent le même vivier de proximité.
+ * géographique ; la vraie vue carte « À proximité » arrivera plus tard — pour
+ * l'instant les deux onglets présentent le même vivier de proximité.
  */
 export function DiscoverScreen() {
   const { isAuthenticated } = useAuth();
   const [feed, setFeed] = useState<Feed>("foryou");
 
   return (
-    <div
-      className="dark relative flex min-h-dvh flex-col overflow-hidden px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-28 text-white"
-      style={{
-        background:
-          "radial-gradient(120% 80% at 50% -8%, rgba(106,79,192,0.30) 0%, transparent 56%), linear-gradient(180deg,#17131f 0%,#100d17 100%)",
-      }}
-    >
-      <div className="bg-accent/15 pointer-events-none absolute top-40 -right-24 size-72 rounded-full blur-3xl" />
+    <div className="bg-background text-foreground relative flex min-h-dvh flex-col overflow-hidden px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-28">
+      {/* Halo de marque discret — fonctionne en clair comme en sombre. */}
+      <div className="bg-accent/15 pointer-events-none absolute -top-20 -right-24 size-72 rounded-full blur-3xl" />
+      <div className="bg-brand-400/10 pointer-events-none absolute top-1/3 -left-28 size-64 rounded-full blur-3xl" />
 
       <header className="relative z-10 flex items-center justify-between gap-3">
-        <IconButton tone="glassDark" shape="round" aria-label="Menu" asChild>
-          <Link href={ROUTES.events}>
-            <Menu className="size-5" aria-hidden />
-          </Link>
-        </IconButton>
-
         <FeedToggle value={feed} onChange={setFeed} />
 
-        <IconButton tone="glassDark" shape="round" aria-label="Filtres" asChild>
-          <Link href={ROUTES.filters}>
-            <SlidersHorizontal className="size-5" aria-hidden />
-          </Link>
-        </IconButton>
+        <Link
+          href={ROUTES.filters}
+          aria-label="Filtres"
+          className="border-border bg-card text-foreground shadow-soft hover:bg-muted focus-visible:ring-ring grid size-11 shrink-0 place-items-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:outline-none active:scale-95"
+        >
+          <SlidersHorizontal className="size-5" aria-hidden />
+        </Link>
       </header>
 
       <div className="relative z-10 mt-5 flex min-h-0 flex-1 flex-col">
@@ -62,7 +54,7 @@ export function DiscoverScreen() {
   );
 }
 
-/** Sélecteur segmenté en verre avec pastille active glissante (layoutId). */
+/** Sélecteur segmenté avec pastille active glissante (layoutId), theme-aware. */
 function FeedToggle({
   value,
   onChange,
@@ -76,7 +68,7 @@ function FeedToggle({
   ];
 
   return (
-    <div className="relative flex items-center gap-1 rounded-[var(--radius-pill)] border border-white/10 bg-white/5 p-1 backdrop-blur-md">
+    <div className="bg-muted/70 border-border relative flex items-center gap-1 rounded-[var(--radius-pill)] border p-1 backdrop-blur-md">
       {tabs.map(({ key, label, Icon }) => {
         const active = value === key;
         return (
@@ -87,13 +79,15 @@ function FeedToggle({
             aria-pressed={active}
             className={cn(
               "relative flex items-center gap-1.5 rounded-[var(--radius-pill)] px-3.5 py-2 text-[0.82rem] font-bold whitespace-nowrap transition-colors",
-              active ? "text-white" : "text-white/45 hover:text-white/70",
+              active
+                ? "text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground",
             )}
           >
             {active && (
               <m.span
                 layoutId="feed-active"
-                className="absolute inset-0 -z-10 rounded-[var(--radius-pill)] border border-white/15 bg-white/12"
+                className="gradient-signature shadow-brand absolute inset-0 -z-10 rounded-[var(--radius-pill)]"
                 transition={{ type: "spring", stiffness: 420, damping: 34 }}
                 aria-hidden
               />

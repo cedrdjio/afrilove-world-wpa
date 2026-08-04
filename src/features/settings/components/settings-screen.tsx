@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTheme } from "next-themes";
 import {
   BadgeCheck,
   Bell,
@@ -8,6 +9,7 @@ import {
   Globe,
   HelpCircle,
   MapPin,
+  Moon,
   ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
@@ -16,6 +18,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Avatar } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { ROUTES } from "@/constants/routes";
+import { useMounted } from "@/hooks/use-mounted";
 import { useSettingsStore } from "@/store/settings-store";
 
 /**
@@ -62,6 +65,7 @@ export function SettingsScreen({
         </div>
 
         <div className="glass overflow-hidden rounded-[var(--radius-lg)]">
+          <ThemeRow />
           <ToggleRow icon={Bell} label="Notifications" />
           <NavRow
             icon={MapPin}
@@ -109,6 +113,24 @@ function RowIcon({ icon: Icon }: { icon: LucideIcon }) {
     <span className="bg-accent/15 grid size-9 shrink-0 place-items-center rounded-[var(--radius-sm)]">
       <Icon className="text-primary size-5" aria-hidden />
     </span>
+  );
+}
+
+/** Bascule « Fond sombre » — pilote next-themes (SSR-safe, valeur réelle après montage). */
+function ThemeRow() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const mounted = useMounted();
+  const isDark = mounted && resolvedTheme === "dark";
+  return (
+    <div className="border-border/60 flex items-center gap-3.5 border-b px-4 py-3.5">
+      <RowIcon icon={Moon} />
+      <span className="flex-1 text-sm font-semibold">Fond sombre</span>
+      <Switch
+        checked={isDark}
+        onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+        aria-label="Fond sombre"
+      />
+    </div>
   );
 }
 
