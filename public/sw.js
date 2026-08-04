@@ -131,3 +131,66 @@ self.addEventListener("fetch", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data === "SKIP_WAITING") self.skipWaiting();
 });
+
+/* ------------------------------------------------------------------ *
+ * Web Push (Jalon 10) — pendant de `send_push_on_notification` (mobile).
+ * Le back-end signe et chiffre un payload VAPID ; on l'affiche ici, puis
+ * on route le clic vers le bon écran (match/message → chat, kyc → statut,
+ * sinon → centre de notifications) — équivalent de `usePushNavigation`.
+ * ------------------------------------------------------------------ */
+
+/** Déduit l'URL de destination depuis le payload de la notification. */
+function targetUrlFromData(data) {
+  const matchId = data && data.match_id;
+  if (typeof matchId === "string") return `/chat/${matchId}`;
+  if (data && data.type === "kyc") return "/kyc/pending";
+  return "/notifications";
+}
+
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    // Payload non-JSON (ou vide) : titre générique, corps = texte brut si présent.
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+
+  const title = payload.title || "AfroLove World";
+  const data = payload.data || {};
+  const options = {
+    body: payload.body || "",
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { ...data, url: targetUrlFromData({ ...data, type: payload.type }) },
+    tag: typeof data.match_id === "string" ? `chat-${data.match_id}` : undefined,
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url =
+    (event.notification.data && event.notification.data.url) || "/notifications";
+
+  event.waitUntil(
+    (async () => {
+      const clientList = await self.clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      // Réutilise un onglet ouvert de l'app en le focalisant + naviguant.
+      for (const client of clientList) {
+        if ("focus" in client) {
+          await client.focus();
+          if ("navigate" in client) {
+            await client.navigate(url).catch(() => {});
+          }
+          return;
+        }
+      }
+      if (self.clients.openWindow) await self.clients.openWindow(url);
+    })(),
+  );
+});

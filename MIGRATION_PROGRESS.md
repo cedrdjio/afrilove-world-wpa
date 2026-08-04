@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~60 %**
+**Avancement global : ~66 %**
 _(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée + découverte/matching + messagerie temps réel complets ; notifications, premium, modération à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 9 (Messagerie temps réel) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 10 (Notifications + Web Push) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -28,7 +28,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 9 (Messagerie temps réel) livré.
 | 7 | Recherche avancée | ✅ terminé |
 | 8 | Découverte & Matching | ✅ terminé |
 | 9 | Messagerie temps réel | ✅ terminé |
-| 10 | Notifications | ❌ à faire |
+| 10 | Notifications | ✅ terminé |
 | 11 | Paiements (Premium / CamerPay) | ❌ à faire |
 | 12 | Modération / comptes / légal (+ Admin ?) | ❌ à faire |
 | 13 | Optimisations (perf / PWA / SEO) | ❌ à faire |
@@ -96,9 +96,14 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [x] Recherche de matchs (`/matches/search`) + rangée « Nouveaux matchs »
 
 ### Notifications
-- [ ] In-app + Realtime
-- [ ] Web Push (VAPID + SW)
-- [ ] Badge compteur
+- [x] In-app + Realtime (`notifications`, `postgres_changes` INSERT, staleTime 30 s)
+- [x] Centre `/notifications` (filtres par type, « Tout lire », navigation au clic)
+- [x] Web Push front-end (permission → `PushManager.subscribe` VAPID → `push_tokens`,
+  handlers SW `push`/`notificationclick`, désenregistrement à la déconnexion)
+- [x] Badge compteur (pastille non-lus sur la cloche du header Découvrir)
+- [~] Livraison Web Push : le SW + la souscription sont prêts ; l'émission
+  chiffrée VAPID côté back-end (Edge Function + routage des jetons `platform='web'`)
+  reste à provisionner sur le Supabase partagé (clé privée VAPID = secret serveur)
 
 ### Premium / Paiements
 - [ ] Landing / pricing / features / locked
@@ -607,6 +612,58 @@ d'appui long naturel). Le badge non-lus de la barre d'onglets suit le mobile
 `/chat/[matchId]/emoji-picker`, `/matches/search`). **Régressions** : aucune —
 le placeholder `/messages` du Jalon 3 est remplacé.
 
-➡️ **Prochaine étape : Jalon 10 — Notifications** (in-app + Realtime sur
-`notifications`, écran `/notifications`, badge compteur, **Web Push** VAPID +
-Service Worker `push_tokens`, navigation au clic). En attente de feu vert.
+➡️ **Jalon 10 livré** (voir ci-dessous).
+
+## Journal — Jalon 10 : Notifications & Web Push
+
+**Analyse (source de vérité `afrolove-world-mob`)** : lecture complète du module
+`notifications` (`notificationsService` avec Realtime `postgres_changes` INSERT,
+`useNotifications` — query + realtime + `useHasUnreadNotifications` +
+markAllRead, `NotificationsScreen` avec filtres par type et navigation au clic,
+`pushService` registerDevice/unregisterAllDevices, `usePush` — usePushSync +
+usePushNavigation) + le montage dans `(tabs)/_layout` et `_layout` racine, la
+cloche du `SwipeScreen`, et le trigger DB `send_push_on_notification` (fan-out
+via `pg_net`). Backend partagé : tables `notifications` (en publication Realtime,
+RLS par `profile_id`) et `push_tokens` (`platform ∈ ios|android|web`).
+
+**Livré** :
+- `features/notifications/` — `types` (NotificationType, AppNotification),
+  `service` (fetchNotifications, markAllRead, subscribeToNotifications/
+  unsubscribe via Realtime), `hooks/use-notifications` (query staleTime 30 s,
+  **realtime** invalidant la famille `notifications`, `useUnreadNotificationsCount`,
+  markAllRead), `push/service` (registerDevice/unregisterDevice Web Push),
+  `hooks/use-push` (`usePushSync`, enregistrement une fois par session).
+- Écran `/notifications` (+ layout garde plein écran, sans barre de navigation,
+  à l'image du mobile) : filtres par type (Chip), liste avec icône/accent par
+  type, bord gauche coloré pour les non-lus, « Tout lire », navigation au clic
+  (match/message → `/chat/[id]`, kyc → `/kyc/pending`).
+- **Web Push** front-end complet : permission navigateur → `PushManager.subscribe`
+  (clé publique VAPID via `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) → souscription stockée
+  dans `push_tokens` (`platform='web'`) ; handlers Service Worker `push`
+  (affichage) et `notificationclick` (focus/navigation) — pendant web de
+  `usePushNavigation` ; désenregistrement dans `signOut` (miroir de `useLogout`).
+- Câblages : `AppPresence` monte désormais `useNotificationsRealtime` +
+  `usePushSync` (shell `(app)`, `chat`, `notifications`) ; la cloche du header
+  Découvrir ouvre `/notifications` et porte la pastille non-lus (remplace le
+  toast « bientôt » du J8).
+
+**Écart assumé (backend partagé, non simplifié côté app)** : la souscription
+Web Push et le Service Worker sont prêts de bout en bout côté client ; il reste
+à **provisionner l'émission chiffrée VAPID côté back-end** sur le Supabase
+partagé (une Edge Function `send-web-push` + routage des jetons `platform='web'`
+depuis `send_push_on_notification`, qui aujourd'hui ne parle qu'à Expo). C'est
+une tâche d'infrastructure serveur (clé **privée** VAPID = secret), hors de la
+couche front-end migrée et non déployable sans les secrets du projet — elle est
+tracée ici plutôt qu'improvisée. Sans clé VAPID publique configurée,
+`registerDevice` no-op silencieusement (exactement comme le mobile sans
+`projectId` EAS), sans jamais bloquer le parcours.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (route `/notifications` incluse). **Régressions** : aucune —
+le toast « Notifications bientôt » du header Découvrir est remplacé par la vraie
+navigation ; l'étape d'onboarding « notifications » reste inchangée (elle ne
+faisait que solliciter la permission, l'abonnement réel arrive avec ce jalon).
+
+➡️ **Prochaine étape : Jalon 11 — Paiements (Premium / CamerPay)** (forfaits,
+tunnel de paiement CamerPay via Edge Functions `payment-*`, déverrouillage
+super-likes / likers / boosts, écrans `/premium/*`). En attente de feu vert.

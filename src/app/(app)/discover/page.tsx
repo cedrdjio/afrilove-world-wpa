@@ -26,6 +26,7 @@ import {
 } from "@/features/favorites/hooks/use-favorites";
 import { isRecentlyOnline } from "@/lib/presence";
 import { usePresenceStore } from "@/features/presence/store";
+import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
   SwipeCard,
   type SwipeDirection,
@@ -56,6 +57,7 @@ export default function DiscoverPage() {
   const swipe = useSwipe();
   const entitlements = useEntitlements();
   const onlineIds = usePresenceStore((s) => s.onlineIds);
+  const unreadNotifications = useUnreadNotificationsCount();
 
   // Filtres actifs → signature du deck + fonction de chargement. Le deck
   // lui-même vit dans le deckStore : revenir sur cet écran ne recharge rien.
@@ -243,15 +245,14 @@ export default function DiscoverPage() {
         </h1>
         <button
           type="button"
-          onClick={() =>
-            toast("Notifications bientôt disponibles", {
-              description: "Le centre de notifications arrive au Jalon 10.",
-            })
-          }
+          onClick={() => router.push(ROUTES.notifications)}
           aria-label="Notifications"
-          className="border-border/60 bg-card/60 text-foreground hover:bg-muted grid size-11 place-items-center rounded-2xl border backdrop-blur transition-colors"
+          className="border-border/60 bg-card/60 text-foreground hover:bg-muted relative grid size-11 place-items-center rounded-2xl border backdrop-blur transition-colors"
         >
           <Bell className="size-[18px]" aria-hidden />
+          {unreadNotifications > 0 ? (
+            <span className="border-background bg-primary absolute top-2.5 right-2.5 size-2 rounded-full border-2" />
+          ) : null}
         </button>
       </div>
 

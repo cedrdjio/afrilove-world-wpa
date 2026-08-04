@@ -13,6 +13,7 @@ import {
 import { type Session, type User } from "@supabase/supabase-js";
 
 import { useSupabase } from "@/providers/supabase-provider";
+import { unregisterDevice } from "@/features/notifications/push/service";
 import { type Database } from "@/types/database";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -100,6 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const doSignOut = useCallback(async () => {
+    // Coupe les pushes vers ce navigateur avant de fermer la session (miroir de
+    // `useLogout` mobile). Ne bloque jamais la déconnexion en cas d'échec.
+    const userId = currentUserId.current;
+    if (userId) await unregisterDevice(supabase, userId);
     await supabase.auth.signOut();
     setProfile(null);
   }, [supabase]);

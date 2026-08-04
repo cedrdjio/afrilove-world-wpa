@@ -26,6 +26,9 @@ const clientSchema = z.object({
   // Active le bouton « Continuer avec Google » (provider OAuth à configurer côté
   // Supabase). Masqué par défaut, à l'image du gating par client-id du mobile.
   NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: z.enum(["true", "false"]).default("false"),
+  // Clé publique VAPID pour l'abonnement Web Push (service worker). Optionnelle :
+  // absente, l'enregistrement push no-op (comme le mobile sans `projectId` EAS).
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().default(""),
 });
 
 const serverSchema = z.object({
@@ -38,6 +41,7 @@ const clientParsed = clientSchema.safeParse({
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:
     process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED,
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
 });
 
 if (!clientParsed.success) {
@@ -78,6 +82,10 @@ export const env = {
     (process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true"
       ? "true"
       : "false"),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY:
+    clientParsed.data?.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+    "",
 } as const;
 
 /** Env serveur uniquement (ne jamais importer dans un composant client). */
