@@ -158,12 +158,24 @@ export interface PublicProfileView {
   verified: boolean;
   /** Actif à l'instant (dernier heartbeat < 5 min) → badge « En temps réel ». */
   online: boolean;
+  gender: string | null;
   city: string | null;
   country: string | null;
   distanceKm: number | null;
+  heightCm: number | null;
   bio: string | null;
   profession: string | null;
+  /** Libellés résolus des catalogues de référence (null si non renseigné). */
+  education: string | null;
+  religion: string | null;
+  /** Modes de vie (valeurs d'énum brutes ; résolues en libellés côté vue). */
+  smoking: string | null;
+  drinking: string | null;
+  gymHabit: string | null;
+  hasPets: string | null;
+  wantsChildren: string | null;
   interests: ProfileInterest[];
+  languages: string[];
   lastActiveAt: string | null;
 }
 
@@ -197,6 +209,24 @@ async function fetchPublicProfile(
     interests = (rows ?? []).map((r) => ({ label: r.label, icon: r.icon }));
   }
 
+  // Langues — libellés ordonnés depuis le catalogue de référence.
+  let languages: string[] = [];
+  const languageIds = row.language_ids ?? [];
+  if (languageIds.length) {
+    const { data: rows } = await supabase
+      .from("languages")
+      .select("id, label, sort_order")
+      .in("id", languageIds)
+      .order("sort_order");
+    languages = (rows ?? []).map((r) => r.label);
+  }
+
+  // Religion / niveau d'études — un seul libellé chacun (résolu à la volée).
+  const [education, religion] = await Promise.all([
+    resolveCatalogLabel(supabase, "education_levels", row.education_level_id),
+    resolveCatalogLabel(supabase, "religions", row.religion_id),
+  ]);
+
   const lastActiveAt = row.last_active_at ?? null;
   return {
     id: row.id,
@@ -205,14 +235,39 @@ async function fetchPublicProfile(
     photos: row.photo_urls ?? [],
     verified: row.is_verified,
     online: isOnline(lastActiveAt),
+    gender: row.gender ?? null,
     city: row.city,
     country: row.country,
     distanceKm: row.distance_km,
+    heightCm: row.height_cm ?? null,
     bio: row.bio,
     profession: row.profession,
+    education,
+    religion,
+    smoking: row.smoking ?? null,
+    drinking: row.drinking ?? null,
+    gymHabit: row.gym_habit ?? null,
+    hasPets: row.has_pets ?? null,
+    wantsChildren: row.wants_children ?? null,
     interests,
+    languages,
     lastActiveAt,
   };
+}
+
+/** Résout le libellé d'une entrée de catalogue (religion, études). */
+async function resolveCatalogLabel(
+  supabase: ReturnType<typeof db>,
+  table: "religions" | "education_levels",
+  id: string | null | undefined,
+): Promise<string | null> {
+  if (!id) return null;
+  const { data } = await supabase
+    .from(table)
+    .select("label")
+    .eq("id", id)
+    .maybeSingle();
+  return data?.label ?? null;
 }
 
 /** Journalise une vue de profil (alimente les stats « vues »). */

@@ -11,7 +11,7 @@ import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
 import { findProfile } from "@/features/profiles/data";
-import { useFavoriteIds } from "@/features/favorites/hooks";
+import { useFavoriteIds, useToggleFavorite } from "@/features/favorites/hooks";
 import { useBlockProfile } from "@/features/moderation/hooks";
 
 import { discoveryService } from "../service";
@@ -48,7 +48,17 @@ function DemoProfileDetail({ id }: { id: string }) {
     locationLine: `${profile.origin} · vit à ${profile.city} · à ${profile.distanceKm} km`,
     profession: null,
     bio: profile.bio,
+    gender: profile.gender,
+    heightCm: null,
+    education: null,
+    religion: null,
+    smoking: null,
+    drinking: null,
+    gymHabit: null,
+    hasPets: null,
+    wantsChildren: null,
     interests: profile.interests.map((label) => ({ label, icon: null })),
+    languages: [],
     privatePhotoCount: 0,
   };
 
@@ -79,6 +89,7 @@ function RealProfileDetail({ id }: { id: string }) {
   const swipeMutation = useSwipe();
   const block = useBlockProfile();
   const favoriteIds = useFavoriteIds();
+  const toggleFavorite = useToggleFavorite();
   const [match, setMatch] = useState<MatchView | null>(null);
   const [sheet, setSheet] = useState<"closed" | "menu" | "report">("closed");
 
@@ -112,7 +123,17 @@ function RealProfileDetail({ id }: { id: string }) {
       .join(" · "),
     profession: p.profession,
     bio: p.bio,
+    gender: p.gender,
+    heightCm: p.heightCm,
+    education: p.education,
+    religion: p.religion,
+    smoking: p.smoking,
+    drinking: p.drinking,
+    gymHabit: p.gymHabit,
+    hasPets: p.hasPets,
+    wantsChildren: p.wantsChildren,
     interests: p.interests,
+    languages: p.languages,
     // L'album privé (18+) n'est pas exposé par `get_public_profile` :
     // pas de tuile verrouillée tant que la fonctionnalité n'est pas branchée.
     privatePhotoCount: 0,
@@ -169,6 +190,21 @@ function RealProfileDetail({ id }: { id: string }) {
         onReport={() => setSheet("report")}
         onBlock={doBlock}
         onUnlockPrivate={() => router.push(ROUTES.premium)}
+        isFavorite={favoriteIds.has(id)}
+        favoriteBusy={toggleFavorite.isPending}
+        onToggleFavorite={() => {
+          const isFavorite = favoriteIds.has(id);
+          haptic(isFavorite ? "light" : "success");
+          toggleFavorite.mutate(
+            { targetId: id, isFavorite },
+            {
+              onSuccess: () =>
+                toast.success(
+                  isFavorite ? "Retiré de vos favoris" : "Ajouté à vos favoris",
+                ),
+            },
+          );
+        }}
       />
       {sheet !== "closed" && (
         <ProfileActionSheet

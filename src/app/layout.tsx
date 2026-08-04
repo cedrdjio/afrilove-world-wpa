@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Nunito, Plus_Jakarta_Sans } from "next/font/google";
 
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { InstallPrompt } from "@/components/pwa/install-prompt";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { SplashScreen } from "@/components/pwa/splash-screen";
 import { siteConfig } from "@/config/site";
@@ -162,6 +163,7 @@ export default function RootLayout({
         <AppProviders>
           <OfflineBanner />
           <div id="contenu">{children}</div>
+          <InstallPrompt />
           <ServiceWorkerRegister />
           <SplashScreen />
         </AppProviders>

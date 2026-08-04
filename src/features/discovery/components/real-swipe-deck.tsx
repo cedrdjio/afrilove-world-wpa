@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
+import { useFavoriteIds, useToggleFavorite } from "@/features/favorites/hooks";
 
 import { discoveryToCard } from "../card";
 import { useDiscoveryFeed, useSwipe } from "../hooks";
@@ -27,6 +28,8 @@ export function RealSwipeDeck() {
   const { profile: me } = useAuth();
   const { data, isLoading, refetch, isFetching } = useDiscoveryFeed("all");
   const swipeMutation = useSwipe();
+  const favoriteIds = useFavoriteIds();
+  const toggleFavorite = useToggleFavorite();
   const haptic = useHaptics();
 
   const [index, setIndex] = useState(0);
@@ -80,6 +83,7 @@ export function RealSwipeDeck() {
   }, []);
 
   const lastDirection = history[0]?.direction ?? "like";
+  const topIsFavorite = top ? favoriteIds.has(top.id) : false;
 
   return (
     <>
@@ -95,6 +99,19 @@ export function RealSwipeDeck() {
         emptySubtitle="Revenez plus tard ou élargissez vos filtres."
         emptyActionLabel={isFetching ? "Chargement…" : "Actualiser"}
         onEmptyAction={() => void refetch()}
+        isFavorite={topIsFavorite}
+        favoriteBusy={toggleFavorite.isPending}
+        onToggleFavorite={
+          top
+            ? () => {
+                haptic(topIsFavorite ? "light" : "success");
+                toggleFavorite.mutate({
+                  targetId: top.id,
+                  isFavorite: topIsFavorite,
+                });
+              }
+            : undefined
+        }
       />
       <MatchOverlayView
         match={match}

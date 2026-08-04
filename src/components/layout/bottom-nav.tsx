@@ -31,7 +31,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navigation principale"
-      className="border-border bg-card/90 fixed inset-x-0 bottom-0 z-40 mx-auto mb-[calc(env(safe-area-inset-bottom)+0.5rem)] flex w-[calc(100%-2rem)] max-w-md items-center justify-around gap-1 rounded-[var(--radius-pill)] border p-2.5 shadow-[0_12px_40px_-10px_rgba(46,36,64,0.35)] backdrop-blur-xl"
+      className="border-border bg-card/90 fixed bottom-[calc(env(safe-area-inset-bottom)+0.5rem)] left-1/2 z-40 flex w-fit -translate-x-1/2 items-center gap-1.5 rounded-[var(--radius-pill)] border p-1.5 shadow-[0_12px_40px_-10px_rgba(46,36,64,0.35)] backdrop-blur-xl"
     >
       {ITEMS.map(({ key, label, href, Icon }) => {
         const active = pathname.startsWith(href);
@@ -41,7 +41,7 @@ export function BottomNav() {
             href={href}
             aria-current={active ? "page" : undefined}
             aria-label={label}
-            className="relative flex flex-1 items-center justify-center py-1.5"
+            className="relative flex items-center justify-center"
           >
             <span
               className={cn(

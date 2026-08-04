@@ -4,13 +4,16 @@ import { useRef, useState } from "react";
 import Image from "next/image";
 import { m } from "framer-motion";
 import {
+  Bookmark,
   Briefcase,
   ChevronDown,
   ChevronLeft,
+  Church,
   Flag,
+  GraduationCap,
   Heart,
+  Languages,
   Lock,
-  type LucideIcon,
   MapPin,
   MessageCircle,
   MoreHorizontal,
@@ -25,6 +28,16 @@ import { initials } from "@/utils/format";
 import { cn } from "@/lib/utils";
 
 import type { ProfileInterest } from "../service";
+import {
+  childrenFact,
+  drinkingFact,
+  genderFact,
+  gymFact,
+  heightFact,
+  type LifestyleFact,
+  petsFact,
+  smokingFact,
+} from "../lifestyle";
 
 /** Modèle d'affichage de la fiche (démo ou données réelles). */
 export interface ProfileDetailView {
@@ -39,7 +52,21 @@ export interface ProfileDetailView {
   locationLine: string;
   profession: string | null;
   bio: string | null;
+  /** Genre (énum brut : femme / homme / non-binaire). */
+  gender: string | null;
+  /** Taille en centimètres. */
+  heightCm: number | null;
+  /** Libellés résolus des catalogues. */
+  education: string | null;
+  religion: string | null;
+  /** Modes de vie (énums bruts, traduits par `lifestyle.ts`). */
+  smoking: string | null;
+  drinking: string | null;
+  gymHabit: string | null;
+  hasPets: string | null;
+  wantsChildren: string | null;
   interests: ProfileInterest[];
+  languages: string[];
   /** Nombre de médias privés (album 18+ verrouillé). 0 = pas de tuile. */
   privatePhotoCount: number;
 }
@@ -62,6 +89,9 @@ export function ProfileDetail({
   onReport,
   onBlock,
   onUnlockPrivate,
+  isFavorite = false,
+  onToggleFavorite,
+  favoriteBusy = false,
   messageLabel = "Message",
 }: {
   view: ProfileDetailView;
@@ -75,12 +105,33 @@ export function ProfileDetail({
   onBlock?: () => void;
   /** Déverrouillage de l'album privé (redirige vers Premium). */
   onUnlockPrivate?: () => void;
+  /** Mise en favori (signet) — bouton dédié dans l'en-tête. */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  favoriteBusy?: boolean;
   messageLabel?: string;
 }) {
   const [active, setActive] = useState(0);
   const detailsRef = useRef<HTMLDivElement>(null);
   const hero = view.photos[active] ?? view.photos[0] ?? null;
   const hasGallery = view.photos.length > 1 || view.privatePhotoCount > 0;
+
+  // Facettes affichables (icône + libellé), filtrées des valeurs absentes.
+  const essentials: LifestyleFact[] = [
+    view.profession ? { label: view.profession, Icon: Briefcase } : null,
+    genderFact(view.gender),
+    heightFact(view.heightCm),
+    view.education ? { label: view.education, Icon: GraduationCap } : null,
+    view.religion ? { label: view.religion, Icon: Church } : null,
+  ].filter((f): f is LifestyleFact => f !== null);
+
+  const lifestyle: LifestyleFact[] = [
+    smokingFact(view.smoking),
+    drinkingFact(view.drinking),
+    gymFact(view.gymHabit),
+    petsFact(view.hasPets),
+    childrenFact(view.wantsChildren),
+  ].filter((f): f is LifestyleFact => f !== null);
 
   const scrollToDetails = () =>
     detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -119,14 +170,36 @@ export function ProfileDetail({
           >
             <ChevronLeft className="size-5" aria-hidden />
           </IconButton>
-          <IconButton
-            tone="glassDark"
-            shape="round"
-            aria-label="Options"
-            onClick={onOptions}
-          >
-            <MoreHorizontal className="size-5" aria-hidden />
-          </IconButton>
+          <div className="flex items-center gap-2">
+            {onToggleFavorite && (
+              <IconButton
+                tone="glassDark"
+                shape="round"
+                aria-label={
+                  isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"
+                }
+                aria-pressed={isFavorite}
+                disabled={favoriteBusy}
+                onClick={onToggleFavorite}
+                className={cn(isFavorite && "bg-white/25")}
+              >
+                <Bookmark
+                  className={cn("size-5", isFavorite && "fill-current")}
+                  aria-hidden
+                />
+              </IconButton>
+            )}
+            {onOptions && (
+              <IconButton
+                tone="glassDark"
+                shape="round"
+                aria-label="Options"
+                onClick={onOptions}
+              >
+                <MoreHorizontal className="size-5" aria-hidden />
+              </IconButton>
+            )}
+          </div>
         </div>
 
         {/* Pastilles de progression photo */}
@@ -233,23 +306,44 @@ export function ProfileDetail({
         {/* À propos */}
         {view.bio && <AboutMe bio={view.bio} />}
 
-        {/* Plus d'infos */}
-        {(view.interests.length > 0 || view.profession) && (
-          <section className="border-border rounded-[var(--radius-lg)] border p-4">
-            <h2 className="font-display text-base font-bold">Plus d’infos</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {view.profession && (
-                <InfoTag label={view.profession} Icon={Briefcase} />
-              )}
-              {view.interests.map((interest) => (
-                <InfoTag
-                  key={interest.label}
-                  label={interest.label}
-                  Icon={interestIcon(interest.icon)}
-                />
-              ))}
-            </div>
-          </section>
+        {/* En bref — métier, genre, taille, études, religion */}
+        {essentials.length > 0 && (
+          <TagSection title="En bref">
+            {essentials.map((fact) => (
+              <InfoTag key={fact.label} label={fact.label} Icon={fact.Icon} />
+            ))}
+          </TagSection>
+        )}
+
+        {/* Mode de vie — tabac, alcool, sport, animaux, enfants */}
+        {lifestyle.length > 0 && (
+          <TagSection title="Mode de vie">
+            {lifestyle.map((fact) => (
+              <InfoTag key={fact.label} label={fact.label} Icon={fact.Icon} />
+            ))}
+          </TagSection>
+        )}
+
+        {/* Langues parlées */}
+        {view.languages.length > 0 && (
+          <TagSection title="Langues">
+            {view.languages.map((lang) => (
+              <InfoTag key={lang} label={lang} Icon={Languages} />
+            ))}
+          </TagSection>
+        )}
+
+        {/* Centres d'intérêt */}
+        {view.interests.length > 0 && (
+          <TagSection title="Centres d’intérêt">
+            {view.interests.map((interest) => (
+              <InfoTag
+                key={interest.label}
+                label={interest.label}
+                Icon={interestIcon(interest.icon)}
+              />
+            ))}
+          </TagSection>
         )}
 
         {/* Signaler / bloquer — en bas de fiche */}
@@ -351,8 +445,30 @@ function AboutMe({ bio }: { bio: string }) {
   );
 }
 
-/** Tag « Plus d'infos » : icône vectorielle + libellé. */
-function InfoTag({ label, Icon }: { label: string; Icon: LucideIcon }) {
+/** Section « tags » : titre + nuage de pastilles vectorielles. */
+function TagSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="border-border rounded-[var(--radius-lg)] border p-4">
+      <h2 className="font-display text-base font-bold">{title}</h2>
+      <div className="mt-3 flex flex-wrap gap-2">{children}</div>
+    </section>
+  );
+}
+
+/** Tag d'info : icône vectorielle + libellé. */
+function InfoTag({
+  label,
+  Icon,
+}: {
+  label: string;
+  Icon: React.ComponentType<{ className?: string }>;
+}) {
   return (
     <span className="bg-muted/60 text-foreground inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] px-3 py-1.5 text-[0.8rem] font-semibold">
       <Icon className="text-primary size-4" aria-hidden />

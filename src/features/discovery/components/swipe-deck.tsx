@@ -9,7 +9,7 @@ import {
   useTransform,
   type Variants,
 } from "framer-motion";
-import { Heart, X } from "lucide-react";
+import { Bookmark, Heart, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -103,6 +103,9 @@ export function SwipeDeckView({
   emptySubtitle,
   emptyActionLabel,
   onEmptyAction,
+  isFavorite = false,
+  onToggleFavorite,
+  favoriteBusy = false,
 }: {
   top?: DeckCardModel;
   next?: DeckCardModel;
@@ -116,6 +119,10 @@ export function SwipeDeckView({
   emptySubtitle: string;
   emptyActionLabel: string;
   onEmptyAction: () => void;
+  /** Signet favoris de la carte du dessus (deck réel uniquement). */
+  isFavorite?: boolean;
+  onToggleFavorite?: () => void;
+  favoriteBusy?: boolean;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -154,6 +161,24 @@ export function SwipeDeckView({
             </m.div>
           )}
         </AnimatePresence>
+
+        {/* Signet favoris — superposé haut-gauche, hors du lien de nav. */}
+        {top && onToggleFavorite && (
+          <ActionButton
+            label={isFavorite ? "Retirer des favoris" : "Ajouter aux favoris"}
+            onClick={onToggleFavorite}
+            disabled={favoriteBusy}
+            className={cn(
+              "absolute top-4 left-4 z-30 size-11 text-white ring-1 ring-white/25 backdrop-blur-md",
+              isFavorite ? "gradient-signature ring-0" : "bg-black/45",
+            )}
+          >
+            <Bookmark
+              className={cn("size-5", isFavorite && "fill-current")}
+              aria-hidden
+            />
+          </ActionButton>
+        )}
 
         {/* Actions superposées sur la carte (bas-droite), hors du lien de nav. */}
         {top && (
