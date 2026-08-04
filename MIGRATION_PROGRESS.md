@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~42 %**
-_(fondations + design system + navigation/shell + authentification + onboarding + profil complets ; cœur métier — recherche, découverte, messagerie — à migrer)_
+**Avancement global : ~45 %**
+_(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée complets ; cœur métier — découverte, messagerie — à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 6 (Profil) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 7 (Recherche avancée) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -25,7 +25,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 6 (Profil) livré.
 | 4 | Authentification | ✅ terminé |
 | 5 | Onboarding (carousel → finish) | ✅ terminé |
 | 6 | Profil (mon profil / édition / public) | ✅ terminé |
-| 7 | Recherche avancée | ❌ à faire |
+| 7 | Recherche avancée | ✅ terminé |
 | 8 | Découverte & Matching | ❌ à faire |
 | 9 | Messagerie temps réel | ❌ à faire |
 | 10 | Notifications | ❌ à faire |
@@ -80,7 +80,10 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [ ] Localisation / distance / diaspora matching
 
 ### Recherche avancée
-- [ ] Hub + 11 filtres (age, city, country, distance, education, height, languages, lifestyle, profession, religion, verified)
+- [x] Hub + 11 filtres (age, city, country, distance, education, height, languages, lifestyle, profession, religion, verified)
+- [x] Store en mémoire `useSearchFiltersStore` (port de `searchFiltersStore`)
+- [x] Chrome commun `SearchFieldLayout` (retour + « Appliquer ») + `RangeStepper`
+- [x] Garde session + profil complété ; « Rechercher » ouvre la découverte (application effective des filtres → J8)
 
 ### Messagerie
 - [ ] Liste conversations
@@ -468,5 +471,44 @@ fidèlement, en déférant proprement les liens transverses.
 **Régressions** : aucune. La page profil passe de lecture seule à complète ; la
 complétion devient réelle.
 
-➡️ **Prochaine étape : Jalon 7 — Recherche avancée** (filtres, `search_profiles`,
-préférences persistées, résultats). En attente de feu vert.
+➡️ **Jalon 7 livré** (voir ci-dessous).
+
+## Journal — Jalon 7 : Recherche avancée
+
+**Analyse (source de vérité : `afrolove-world-mob`)** : le module `search`
+mobile est un **constructeur de filtres purement UI**. Le hub
+(`SearchFiltersHubScreen`) liste 11 filtres, chacun ouvrant un écran dédié qui
+écrit dans `searchFiltersStore` (Zustand en mémoire, libellés d'options fixes).
+Le bouton « Rechercher des profils » **ouvre simplement la découverte** — il
+n'exécute aucune requête. L'application effective de ces critères (RPC
+`search_profiles`, `filtersStore` de la découverte) est distincte et relève du
+**Jalon 8** ; les deux stores mobiles ne doivent pas être confondus.
+
+**Livré (parité 1:1 avec les 15 fichiers mobiles)** :
+- `features/search/store.ts` — `useSearchFiltersStore` (port exact de
+  `searchFiltersStore` : distance / âge / pays / ville / religion / langues[] /
+  mode de vie[] / éducation / profession / taille / vérifié + setters/togglers).
+- `features/search/components/search-field-layout.tsx` — chrome commun (fond
+  crème + halo, retour, titre, « Appliquer » → `router.back()`).
+- `features/search/components/range-stepper.tsx` — double compteur borné
+  (min/max), réutilisé par âge et taille.
+- `features/search/components/string-choice-list.tsx` — adaptateur `ChoiceList`
+  (profil) pour des libellés bruts (pays/ville/religion/éducation).
+- `app/search/page.tsx` — hub (11 lignes icône/libellé/valeur + « Rechercher »
+  → découverte).
+- `app/search/{distance,age,country,city,religion,languages,lifestyle,education,`
+  `profession,height,verified}/page.tsx` — 11 écrans de filtre.
+- `app/search/layout.tsx` — garde `RequireCompletedOnboarding`.
+
+**Écarts assumés (fidèles au mobile)** : chips multi-sélection (langues/mode de
+vie) via `Chip` signature ; `Switch` Radix pour « vérifié » ; `GlassInput` pour
+profession ; halo/typographies de la charte. Aucune persistance (état en
+mémoire, comme sur mobile). L'exécution de la recherche est déléguée à J8.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (12 routes `/search` prérendues). **Régressions** : aucune.
+
+➡️ **Prochaine étape : Jalon 8 — Découverte & Matching** (deck de swipe,
+`search_profiles` + `filtersStore`, likes/passes/superlikes, match & célébration,
+limite quotidienne, application effective des filtres du Jalon 7). En attente de
+feu vert.
