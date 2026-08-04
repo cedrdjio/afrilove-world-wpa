@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ChevronDown, MapPin, Star } from "lucide-react";
+import { ChevronDown, Star } from "lucide-react";
 
 import { VerifiedBadge } from "@/components/brand/verified-badge";
 import { initials } from "@/utils/format";
@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils";
 import type { DeckCardModel } from "../card";
 
 /**
- * Carte profil (« 04 Découverte ») — présentation pure façon maquette PURELY :
- * photo plein cadre aux coins arrondis, voile de lisibilité fin en bas, identité
- * posée directement dessus (nom + âge, chevron « ouvrir », distance) et pastille
- * de compatibilité claire en haut. Le swipe / le lien vers le détail sont pilotés
- * par le parent (`SwipeDeck`).
+ * Carte profil (« 04 Découverte ») — présentation pure façon maquette : photo
+ * plein cadre aux coins arrondis, points d'aperçu photo (bas-gauche), identité
+ * posée sur un voile fin (prénom + âge + chevron « ouvrir », distance) et
+ * pastille de compatibilité claire (haut-droite). Les boutons d'action sont
+ * superposés par le parent (`SwipeDeckView`), hors du lien de navigation.
  */
 export function ProfileCard({
   card,
@@ -24,6 +24,7 @@ export function ProfileCard({
   className?: string;
 }) {
   const hasLocation = Boolean(card.city) || card.distanceKm != null;
+  const photoCount = card.photos.length;
 
   return (
     <div
@@ -53,7 +54,7 @@ export function ProfileCard({
       {/* Voile de lisibilité — dense en bas pour asseoir le texte. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
 
-      {/* Compatibilité — pastille claire en haut à droite (façon « New Here »). */}
+      {/* Compatibilité — pastille claire en haut à droite. */}
       <div className="absolute top-4 right-4">
         <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-pill)] bg-white/90 px-3 py-1.5 text-xs font-extrabold text-[#2e2440] shadow-sm backdrop-blur-md">
           <Star className="text-primary size-3.5 fill-current" aria-hidden />
@@ -61,30 +62,44 @@ export function ProfileCard({
         </span>
       </div>
 
-      {/* Identité posée sur le voile — nom + chevron « ouvrir », puis distance. */}
-      <div className="absolute inset-x-5 bottom-5">
+      {/* Identité (bas-gauche) : points photo, prénom + chevron « ouvrir », distance.
+          On garde le prénom seul (façon maquette) pour laisser respirer les
+          boutons d'action à droite ; l'âge reste sur la fiche détaillée. */}
+      <div className="absolute inset-x-5 bottom-6 max-w-[58%]">
+        {photoCount > 1 && (
+          <div
+            className="mb-3 flex items-center gap-1.5"
+            aria-label={`${photoCount} photos`}
+          >
+            {Array.from({ length: photoCount }).map((_, i) => (
+              <span
+                key={i}
+                className={cn(
+                  "h-1.5 rounded-full transition-all",
+                  i === 0 ? "w-5 bg-white" : "w-1.5 bg-white/45",
+                )}
+              />
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center gap-2">
-          <h2 className="font-display truncate text-[1.9rem] leading-none font-extrabold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
-            {card.firstName}, {card.age}
+          <h2 className="font-display truncate text-[2rem] leading-none font-extrabold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.55)]">
+            {card.firstName}
           </h2>
-          {card.verified && <VerifiedBadge size={22} />}
+          {card.verified && <VerifiedBadge size={20} />}
           <ChevronDown
-            className="size-6 shrink-0 text-white/80 drop-shadow"
+            className="size-5 shrink-0 text-white/85 drop-shadow"
             aria-hidden
           />
         </div>
-        {hasLocation && (
-          <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-white/85">
-            <MapPin className="size-4 shrink-0" aria-hidden />
-            <span className="truncate">
-              {card.city}
-              {card.city && card.distanceKm != null ? " · " : ""}
-              {card.distanceKm != null
-                ? `à ${Math.round(card.distanceKm)} km`
-                : ""}
-            </span>
-          </p>
-        )}
+        <p className="mt-2 truncate text-sm font-semibold text-white/85">
+          {card.age} ans
+          {hasLocation ? " · " : ""}
+          {card.distanceKm != null
+            ? `à ${Math.round(card.distanceKm)} km`
+            : (card.city ?? "")}
+        </p>
       </div>
     </div>
   );

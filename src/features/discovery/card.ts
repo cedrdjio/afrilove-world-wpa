@@ -12,6 +12,8 @@ export interface DeckCardModel {
   firstName: string;
   age: number;
   photo: string | null;
+  /** Toutes les photos disponibles (pour l'indicateur de points de la carte). */
+  photos: string[];
   compatibility: number;
   verified: boolean;
   city: string | null;
@@ -25,6 +27,7 @@ export function profileToCard(p: Profile): DeckCardModel {
     firstName: p.firstName,
     age: p.age,
     photo: p.photos[0],
+    photos: p.photos,
     compatibility: p.compatibility,
     verified: p.verified,
     city: p.city,
@@ -39,6 +42,8 @@ export function discoveryToCard(p: DiscoveryProfile): DeckCardModel {
     firstName: p.firstName,
     age: p.age,
     photo: p.avatarUrl,
+    // La RPC `search_profiles` ne renvoie qu'un avatar pour l'instant.
+    photos: p.avatarUrl ? [p.avatarUrl] : [],
     compatibility: p.compatibility,
     verified: p.isVerified,
     city: p.city,

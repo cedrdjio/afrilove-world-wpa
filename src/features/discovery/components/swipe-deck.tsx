@@ -9,7 +9,7 @@ import {
   useTransform,
   type Variants,
 } from "framer-motion";
-import { Heart, RotateCcw, Sparkles, X } from "lucide-react";
+import { Heart, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -97,10 +97,8 @@ export function SwipeDeckView({
   top,
   next,
   lastDirection,
-  canRewind,
   loading = false,
   onDecide,
-  onRewind,
   emptyTitle,
   emptySubtitle,
   emptyActionLabel,
@@ -109,10 +107,11 @@ export function SwipeDeckView({
   top?: DeckCardModel;
   next?: DeckCardModel;
   lastDirection: SwipeDirection;
-  canRewind: boolean;
+  /** Conservés pour l'API (rewind/super Premium) — non rendus dans la maquette 2 boutons. */
+  canRewind?: boolean;
   loading?: boolean;
   onDecide: (direction: SwipeDirection) => void;
-  onRewind: () => void;
+  onRewind?: () => void;
   emptyTitle: string;
   emptySubtitle: string;
   emptyActionLabel: string;
@@ -155,41 +154,27 @@ export function SwipeDeckView({
             </m.div>
           )}
         </AnimatePresence>
-      </div>
 
-      {top && (
-        <div className="relative z-20 -mt-9 flex items-center justify-center gap-4 pb-1">
-          <ActionButton
-            label="Revenir en arrière"
-            onClick={onRewind}
-            disabled={!canRewind}
-            className="border-border bg-card text-warning size-12 border shadow-[0_8px_22px_-8px_rgba(46,36,64,0.45)]"
-          >
-            <RotateCcw className="size-5" aria-hidden />
-          </ActionButton>
-          <ActionButton
-            label="Passer"
-            onClick={() => onDecide("pass")}
-            className="size-16 bg-[#2e2440] text-white shadow-[0_12px_28px_-8px_rgba(46,36,64,0.6)]"
-          >
-            <X className="size-7" strokeWidth={2.6} aria-hidden />
-          </ActionButton>
-          <ActionButton
-            label="J'aime"
-            onClick={() => onDecide("like")}
-            className="gradient-signature shadow-brand size-[4.75rem] scale-105 text-white"
-          >
-            <Heart className="size-9 fill-current" aria-hidden />
-          </ActionButton>
-          <ActionButton
-            label="Super like"
-            onClick={() => onDecide("super")}
-            className="border-border bg-card text-primary size-12 border shadow-[0_8px_22px_-8px_rgba(46,36,64,0.45)]"
-          >
-            <Sparkles className="size-5 fill-current" aria-hidden />
-          </ActionButton>
-        </div>
-      )}
+        {/* Actions superposées sur la carte (bas-droite), hors du lien de nav. */}
+        {top && (
+          <div className="absolute right-4 bottom-4 z-30 flex items-center gap-3.5">
+            <ActionButton
+              label="Passer"
+              onClick={() => onDecide("pass")}
+              className="size-14 bg-black/45 text-white ring-1 ring-white/25 backdrop-blur-md"
+            >
+              <X className="size-6" strokeWidth={2.6} aria-hidden />
+            </ActionButton>
+            <ActionButton
+              label="J'aime"
+              onClick={() => onDecide("like")}
+              className="gradient-signature shadow-brand size-14 text-white"
+            >
+              <Heart className="size-6 fill-current" aria-hidden />
+            </ActionButton>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
