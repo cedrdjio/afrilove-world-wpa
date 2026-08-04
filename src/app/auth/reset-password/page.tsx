@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import {
   type ResetPasswordValues,
 } from "@/features/auth/schema";
 import { authErrorMessage, updatePassword } from "@/features/auth/service";
+import { useAuthFlowStore } from "@/features/auth/store";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -25,9 +26,12 @@ import { useSupabase } from "@/providers/supabase-provider";
 export default function ResetPasswordPage() {
   const supabase = useSupabase();
   const router = useRouter();
+  const params = useSearchParams();
   const haptic = useHaptics();
   const { user, isLoading } = useAuth();
+  const setPendingRecovery = useAuthFlowStore((s) => s.setPendingRecovery);
   const [pending, setPending] = useState(false);
+  const fromRecoveryLink = params.get("recovery") === "1";
 
   const {
     register,
@@ -38,18 +42,28 @@ export default function ResetPasswordPage() {
     defaultValues: { password: "", confirmPassword: "" },
   });
 
+  // Le lien de récupération (`recovery=1`) ouvre une session : on arme le
+  // verrou pour que la résolution reste sur cet écran tant que le mot de passe
+  // n'est pas changé (parité `pendingAction=recovery` mobile). Le chemin OTP
+  // (forgot-password) a déjà armé le verrou avant de naviguer ici.
+  useEffect(() => {
+    if (user && fromRecoveryLink) setPendingRecovery(true);
+  }, [user, fromRecoveryLink, setPendingRecovery]);
+
   async function onSubmit(values: ResetPasswordValues) {
     setPending(true);
     const { error } = await updatePassword(supabase, values.password);
-    setPending(false);
     if (error) {
+      setPending(false);
       haptic("error");
       toast.error(authErrorMessage(error) ?? "Mise à jour impossible.");
       return;
     }
     haptic("success");
-    toast.success("Mot de passe mis à jour.");
-    router.replace(ROUTES.discover);
+    // Le verrou a fait son office : on le lève, puis écran de succès (contexte
+    // reset) → résolution → app.
+    setPendingRecovery(false);
+    router.replace(`${ROUTES.authSuccess}?context=reset`);
   }
 
   if (isLoading) {

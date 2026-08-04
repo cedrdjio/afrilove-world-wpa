@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const nextParam = searchParams.get("next");
+  // Par défaut : passer par le sas de résolution (parité mobile) qui route
+  // vers recovery/onboarding/profil/découverte selon l'état réel du compte.
   const next =
-    nextParam && nextParam.startsWith("/") ? nextParam : ROUTES.onboarding;
+    nextParam && nextParam.startsWith("/") ? nextParam : ROUTES.authResolving;
 
   if (!code) {
     return NextResponse.redirect(

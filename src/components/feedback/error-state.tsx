@@ -36,19 +36,56 @@ interface ErrorStateProps {
   /** Action secondaire optionnelle (ex. « Retour à l'accueil »). */
   secondaryLabel?: string;
   onSecondary?: () => void;
+  /** Bannière compacte au-dessus d'un formulaire — parité `variant="inline"`. */
+  inline?: boolean;
 }
 
 /**
  * État d'erreur unifié — port de `ErrorState` (mobile). Rend la même icône +
  * titre + message + affordance « réessayer » pour un `AppErrorKind` donné.
+ * En mode `inline`, se réduit à une bannière compacte (icône + textes + lien
+ * « Réessayer ») posée au-dessus d'un formulaire.
  */
 export function ErrorState({
   error,
   onRetry,
   secondaryLabel,
   onSecondary,
+  inline = false,
 }: ErrorStateProps) {
   const Icon = ICONS[error.kind];
+
+  if (inline) {
+    return (
+      <div
+        role="alert"
+        className="border-danger/25 bg-danger/[0.06] flex items-start gap-3 rounded-[var(--radius-md)] border px-4 py-3"
+      >
+        <Icon
+          className="text-danger mt-0.5 size-5 shrink-0"
+          strokeWidth={1.8}
+          aria-hidden
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-foreground text-[13px] font-semibold">
+            {error.title}
+          </p>
+          <p className="text-muted-foreground mt-0.5 text-[12.5px] leading-[18px]">
+            {error.message}
+          </p>
+          {error.retryable && onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="text-primary mt-1.5 text-[12.5px] font-semibold hover:underline"
+            >
+              Réessayer
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

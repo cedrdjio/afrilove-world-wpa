@@ -4,8 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { m } from "framer-motion";
-import { MailCheck } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
@@ -26,7 +24,6 @@ export default function RegisterPage() {
   const router = useRouter();
   const haptic = useHaptics();
   const [pending, setPending] = useState(false);
-  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const {
     register,
@@ -57,43 +54,15 @@ export default function RegisterPage() {
       return;
     }
     haptic("success");
-    // Session immédiate (confirmation désactivée) → onboarding directement.
+    // Session immédiate (confirmation désactivée) → résolution → onboarding.
     if (data.session) {
-      router.replace(ROUTES.onboarding);
+      router.replace(ROUTES.authResolving);
       return;
     }
-    // Sinon : e-mail de confirmation envoyé.
-    setSentTo(values.email.trim().toLowerCase());
-    setPending(false);
-  }
-
-  if (sentTo) {
-    return (
-      <AuthScreen title="Vérifiez vos e-mails" backTo={ROUTES.login}>
-        <m.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-1 flex-col items-center justify-center text-center"
-        >
-          <span className="gradient-signature shadow-brand grid size-20 place-items-center rounded-full text-white">
-            <MailCheck className="size-9" aria-hidden />
-          </span>
-          <p className="text-foreground mt-6 text-lg font-bold">
-            C’est presque fait !
-          </p>
-          <p className="text-muted-foreground mt-2 text-[0.95rem] leading-relaxed">
-            Nous avons envoyé un lien de confirmation à{" "}
-            <span className="text-foreground font-semibold">{sentTo}</span>.
-            Ouvrez-le pour activer votre compte.
-          </p>
-          <Link href={ROUTES.login} className="mt-8 w-full">
-            <Button size="lg" block variant="secondary">
-              Revenir à la connexion
-            </Button>
-          </Link>
-        </m.div>
-      </AuthScreen>
-    );
+    // Sinon : confirmation requise → écran de saisie du code (OTP) + lien.
+    // Parité mobile : on ne dépend plus du seul retour du lien navigateur.
+    const email = values.email.trim().toLowerCase();
+    router.push(`${ROUTES.verifyEmail}?email=${encodeURIComponent(email)}`);
   }
 
   return (

@@ -10,10 +10,22 @@ const email = z
   .min(1, "L'adresse e-mail est requise.")
   .email("Adresse e-mail invalide.");
 
+// Parité mobile (`newPasswordSchema`) : 8+ caractères mêlant lettres et
+// chiffres. La connexion, elle, ne vérifie que la non-vacuité (un ancien mot
+// de passe plus court ne doit jamais verrouiller son propriétaire côté client).
 const password = z
   .string()
-  .min(8, "8 caractères minimum.")
-  .max(72, "72 caractères maximum."); // limite bcrypt côté GoTrue
+  .min(8, "Au moins 8 caractères.")
+  .max(72, "72 caractères maximum.") // limite bcrypt côté GoTrue
+  .regex(/[a-zA-Z]/, "Au moins une lettre.")
+  .regex(/[0-9]/, "Au moins un chiffre.");
+
+/** Code OTP reçu par e-mail — longueur variable selon la config GoTrue. */
+export const otpSchema = z
+  .string()
+  .trim()
+  .min(4, "Code trop court.")
+  .regex(/^\d+$/, "Le code ne contient que des chiffres.");
 
 export const loginSchema = z.object({
   email,

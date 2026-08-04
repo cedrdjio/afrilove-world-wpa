@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~22 %**
-_(fondations + design system + navigation/shell posés ; auth + onboarding partiels ; cœur métier à migrer)_
+**Avancement global : ~28 %**
+_(fondations + design system + navigation/shell + authentification posés ; onboarding partiel ; cœur métier à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 3 (Navigation & Shell) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 4 (Authentification) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -22,7 +22,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 3 (Navigation & Shell) livré.
 | 1 | Architecture & fondations | ✅ terminé |
 | 2 | Design System (glass lavande) | ✅ terminé |
 | 3 | Navigation & Shell | ✅ terminé |
-| 4 | Authentification | 🟡 partiel |
+| 4 | Authentification | ✅ terminé |
 | 5 | Onboarding (12 étapes) | 🟡 partiel |
 | 6 | Profil (mon profil / édition / public) | ❌ à faire |
 | 7 | Recherche avancée | ❌ à faire |
@@ -265,6 +265,67 @@ identique). L'alias `/likes` est retiré partout.
 - **account-status/reactivate** : le mobile passe par `accountService` ; ici l'update
   `profiles` est inline (le module Settings complet arrive au J12).
 
-➡️ **Prochaine étape : Jalon 4 — Authentification** (welcome, login, register,
-mot de passe oublié/reset, vérification e-mail, deep links de récupération,
-`resolving`/`success`, mapping d'erreurs auth). En attente de feu vert.
+### 2026-08-04 — Jalon 4 : Authentification ✅
+**Analyse d'écart** : le web avait déjà un flux auth fonctionnel (login/register/
+forgot/reset/callback). J4 a comblé les écarts de **fidélité comportementale**
+avec le mobile, en réutilisant les formulaires web existants (RHF + `Field`).
+
+| # | Fonction | Expo | Next (avant) | Action J4 |
+| --- | --- | --- | --- | --- |
+| A | Mot de passe | 8+ **lettre + chiffre** | 8–72 seul | schéma aligné |
+| B | OTP inscription | écran code + renvoi + cooldown | lien seul | `/auth/verify-email` |
+| C | OTP récupération | code recovery in-app (2 temps) | lien seul | forgot-password 2 temps |
+| D | « déjà inscrit » | détection identités vides | non détecté | détection ajoutée |
+| E | Écran succès | `success` (vérifié/mdp changé) | absent | `/auth/success` |
+| F | Résolution post-login | `resolving` → `useInitialRoute` | redirection directe | `/auth/resolving` + hook |
+| G | Erreur de lien | inline sur login | `?error` jamais affiché | surfacée inline |
+| H | Champ OTP | `OtpInput` mono-champ | absent | porté |
+| I | Verrou récupération | `pendingAction=recovery` | absent | store de flux |
+| J | Google | `useGoogleAuth` (gated) | absent | porté (gated env, off) |
+
+**Fichiers créés**
+- `features/auth/store.ts` — `useAuthFlowStore` (verrou `pendingRecovery`, port
+  de `pendingAction`).
+- `hooks/use-initial-route.ts` — port de `useInitialRoute` (recovery → statut →
+  onboarding → profil → découverte).
+- `components/ui/otp-input.tsx` — port d'`OtpInput` (mono-champ, collable).
+- `app/auth/verify-email/page.tsx` — OTP inscription + renvoi cooldown 60s.
+- `app/auth/success/page.tsx` — port d'`AuthSuccessScreen` (contexte vérif/reset).
+- `app/auth/resolving/page.tsx` — port d'`AuthResolvingScreen` (sas de résolution
+  + filet de sécurité profil).
+
+**Fichiers modifiés**
+- `features/auth/schema.ts` — mot de passe lettre+chiffre ; `otpSchema`.
+- `features/auth/service.ts` — `verifySignupOtp`, `verifyRecoveryOtp`,
+  `resendSignupEmail`, `signInWithGoogle` ; détection « déjà inscrit » ;
+  `redirectTo` callback→resolving ; lien recovery porte `recovery=1` ; message
+  d'erreur OTP.
+- `lib/env.ts` — `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED` (défaut `false`).
+- `components/feedback/error-state.tsx` — variante `inline` (parité `variant="inline"`).
+- `app/auth/login/page.tsx` — erreurs inline (dont lien expiré), passage par
+  `resolving` (avec `next`), bouton Google gated.
+- `app/auth/register/page.tsx` — route vers `/auth/verify-email` (au lieu d'un
+  bloc « vérifiez vos e-mails » inline).
+- `app/auth/forgot-password/page.tsx` — phase OTP recovery (code + renvoi
+  cooldown) ; arme le verrou avant de router vers reset.
+- `app/auth/reset-password/page.tsx` — arme/lève `pendingRecovery` (lien
+  `recovery=1` ou chemin OTP) ; succès → `/auth/success?context=reset`.
+- `app/auth/callback/route.ts` — destination par défaut → `resolving`.
+
+**Décisions de périmètre**
+- **Prénom à l'inscription** : le mobile ne le collecte pas (fait à l'onboarding).
+  Réconciliation **différée au J5** pour éviter un état cassé — le prénom reste
+  au register pour l'instant.
+- **Google** masqué tant que `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED!=="true"` (parité :
+  le mobile masque si le provider n'est pas configuré).
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (25 routes, dont `/auth/resolving` `/auth/success`
+`/auth/verify-email`).
+**Régressions** : aucune. Les flux existants restent valides ; ajout de l'OTP,
+du sas de résolution, du verrou de récupération et de l'affichage d'erreur inline.
+
+➡️ **Prochaine étape : Jalon 5 — Onboarding** (12 étapes : name/birthday/gender/
+looking-for/permissions/interests/bio/lifestyle/upload-photos/finish, garde du
+groupe, persistance du brouillon, réconciliation du prénom register→onboarding).
+En attente de feu vert.

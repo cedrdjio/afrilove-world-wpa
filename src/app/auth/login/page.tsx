@@ -5,18 +5,32 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import { AuthScreen } from "@/features/auth/components/auth-screen";
 import { loginSchema, type LoginValues } from "@/features/auth/schema";
-import { authErrorMessage, signInWithPassword } from "@/features/auth/service";
+import { signInWithGoogle, signInWithPassword } from "@/features/auth/service";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
+import { ErrorState } from "@/components/feedback";
 import { ROUTES } from "@/constants/routes";
+import { env } from "@/lib/env";
+import { type AppError, mapToAppError } from "@/lib/errors";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useSupabase } from "@/providers/supabase-provider";
+
+// Posée par le callback quand un lien e-mail (inscription/récupération) est
+// expiré ou déjà utilisé — parité `EXPIRED_LINK_ERROR` (mobile).
+const EXPIRED_LINK_ERROR: AppError = {
+  kind: "session_expired",
+  title: "Lien expiré",
+  message:
+    "Ce lien a expiré ou a déjà été utilisé. Connectez-vous ou refaites une demande.",
+  retryable: false,
+};
+
+const GOOGLE_ENABLED = env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true";
 
 export default function LoginPage() {
   const supabase = useSupabase();
@@ -24,6 +38,10 @@ export default function LoginPage() {
   const params = useSearchParams();
   const haptic = useHaptics();
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
+  const [error, setError] = useState<AppError | null>(null);
+
+  const linkError = params.get("error");
 
   const {
     register,
@@ -36,17 +54,35 @@ export default function LoginPage() {
 
   async function onSubmit(values: LoginValues) {
     setPending(true);
-    const { error } = await signInWithPassword(supabase, values);
-    if (error) {
+    setError(null);
+    const { error: signInError } = await signInWithPassword(supabase, values);
+    if (signInError) {
       setPending(false);
       haptic("error");
-      toast.error(authErrorMessage(error) ?? "Connexion impossible.");
+      setError(mapToAppError(signInError));
       return;
     }
     haptic("success");
-    // La destination réelle est arbitrée par la garde de la page cible.
+    // La destination réelle est arbitrée par la résolution (parité mobile) :
+    // recovery → reset, statut compte, onboarding, profil, découverte.
     const next = params.get("next");
-    router.replace(next && next.startsWith("/") ? next : ROUTES.discover);
+    const target =
+      next && next.startsWith("/")
+        ? `${ROUTES.authResolving}?next=${encodeURIComponent(next)}`
+        : ROUTES.authResolving;
+    router.replace(target);
+  }
+
+  async function onGoogle() {
+    setGooglePending(true);
+    setError(null);
+    const { error: oauthError } = await signInWithGoogle(supabase);
+    if (oauthError) {
+      setGooglePending(false);
+      haptic("error");
+      setError(mapToAppError(oauthError));
+    }
+    // En cas de succès, le navigateur est redirigé vers Google : pas de reset.
   }
 
   return (
@@ -71,6 +107,12 @@ export default function LoginPage() {
         noValidate
         className="flex flex-1 flex-col gap-5"
       >
+        {error ? (
+          <ErrorState error={error} inline onRetry={handleSubmit(onSubmit)} />
+        ) : linkError ? (
+          <ErrorState error={EXPIRED_LINK_ERROR} inline />
+        ) : null}
+
         <Field
           label="Adresse e-mail"
           htmlFor="email"
@@ -119,6 +161,29 @@ export default function LoginPage() {
         >
           {pending ? "Connexion…" : "Se connecter"}
         </Button>
+
+        {GOOGLE_ENABLED ? (
+          <>
+            <div className="flex items-center gap-3">
+              <span className="bg-border/70 h-px flex-1" />
+              <span className="text-muted-foreground/70 text-[11px] font-medium">
+                ou continuer avec
+              </span>
+              <span className="bg-border/70 h-px flex-1" />
+            </div>
+            <Button
+              type="button"
+              size="lg"
+              block
+              variant="secondary"
+              disabled={googlePending}
+              onClick={() => void onGoogle()}
+            >
+              <span className="text-[15px] font-bold text-[#4285F4]">G</span>
+              {googlePending ? "Redirection…" : "Continuer avec Google"}
+            </Button>
+          </>
+        ) : null}
       </form>
     </AuthScreen>
   );

@@ -23,6 +23,9 @@ const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
   NEXT_PUBLIC_APP_URL: z.string().url().default("http://localhost:3000"),
+  // Active le bouton « Continuer avec Google » (provider OAuth à configurer côté
+  // Supabase). Masqué par défaut, à l'image du gating par client-id du mobile.
+  NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: z.enum(["true", "false"]).default("false"),
 });
 
 const serverSchema = z.object({
@@ -33,6 +36,8 @@ const clientParsed = clientSchema.safeParse({
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:
+    process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED,
 });
 
 if (!clientParsed.success) {
@@ -68,6 +73,11 @@ export const env = {
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "http://localhost:3000"),
+  NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:
+    clientParsed.data?.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED ??
+    (process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true"
+      ? "true"
+      : "false"),
 } as const;
 
 /** Env serveur uniquement (ne jamais importer dans un composant client). */
