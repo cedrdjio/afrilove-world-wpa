@@ -9,7 +9,7 @@ import {
   Lock,
   ChevronRight,
   Bookmark,
-  MessageCircle,
+  Search as SearchIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -19,6 +19,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Spinner } from "@/components/ui/spinner";
 import { EmptyState } from "@/components/feedback";
 import { ROUTES } from "@/constants/routes";
+import { isRecentlyOnline } from "@/lib/presence";
 import {
   useSavedFavorites,
   useToggleFavorite,
@@ -27,6 +28,8 @@ import {
   useEntitlements,
   useLikers,
 } from "@/features/premium/hooks/use-entitlements";
+import { useConversationsQuery } from "@/features/messaging/hooks/use-messaging";
+import { usePresenceStore } from "@/features/presence/store";
 
 type MatchesTab = "matchs" | "favoris";
 
@@ -52,8 +55,14 @@ export default function MatchesPage() {
   const favoritesQuery = useSavedFavorites();
   const toggleFavorite = useToggleFavorite();
 
+  // Matchs = conversations (un match surface via `get_my_conversations`).
+  const conversationsQuery = useConversationsQuery();
+  const onlineIds = usePresenceStore((s) => s.onlineIds);
+
   const likers = likersQuery.data ?? [];
   const favorites = favoritesQuery.data ?? [];
+  const matches = conversationsQuery.data ?? [];
+  const newMatchesCount = matches.filter((mtc) => !mtc.lastMessage).length;
 
   const premiumSoon = () =>
     toast("Premium arrive bientôt", {
@@ -77,7 +86,26 @@ export default function MatchesPage() {
           <h1 className="font-display text-foreground text-[30px]">
             Mes Matches
           </h1>
+          {newMatchesCount > 0 ? (
+            <span className="bg-brand-500/10 text-brand-600 font-display rounded-full px-3 py-1.5 text-[11.5px]">
+              {newMatchesCount} nouveaux
+            </span>
+          ) : null}
         </div>
+
+        <button
+          type="button"
+          onClick={() => router.push(ROUTES.matchesSearch)}
+          className="border-border/70 bg-card/45 mb-4 flex w-full items-center gap-2.5 rounded-2xl border-[1.5px] px-4 py-3.5 text-left"
+        >
+          <SearchIcon
+            className="text-muted-foreground size-4 shrink-0"
+            aria-hidden
+          />
+          <span className="text-foreground/30 text-[13px]">
+            Rechercher un match…
+          </span>
+        </button>
 
         {/* Onglets Matchs | Favoris */}
         <div className="border-border/70 bg-card/45 mb-5 flex rounded-full border-[1.5px] p-1">
@@ -184,31 +212,51 @@ export default function MatchesPage() {
             </button>
           ) : null}
 
-          {/* Liste des conversations (matchs) → Jalon 9 (messagerie temps réel). */}
-          <div className="border-border/70 bg-card/45 flex flex-col items-center rounded-2xl border-[1.5px] px-6 py-10 text-center">
-            <span className="bg-brand-500/10 mb-4 grid size-16 place-items-center rounded-full">
-              <MessageCircle
-                className="text-brand-600 size-8"
-                strokeWidth={1.7}
-                aria-hidden
-              />
-            </span>
-            <h2 className="font-display text-foreground mb-1.5 text-[17px] font-bold">
-              Vos matchs arrivent
-            </h2>
-            <p className="text-muted-foreground mb-5 max-w-xs text-[12.5px] leading-5">
-              Vos coups de cœur réciproques et vos conversations apparaîtront
-              ici avec la messagerie temps réel (Jalon 9). Continuez à découvrir
-              en attendant.
-            </p>
-            <button
-              type="button"
-              onClick={() => router.push(ROUTES.discover)}
-              className="text-brand-600 font-display text-[13px] font-semibold"
-            >
-              Découvrir des profils →
-            </button>
-          </div>
+          {/* Nouveaux matchs — rangée d'avatars (un tap ouvre le chat). */}
+          {conversationsQuery.isLoading ? (
+            <div className="flex justify-center pt-6">
+              <Spinner className="size-8" />
+            </div>
+          ) : matches.length === 0 ? (
+            <EmptyState
+              title="Pas encore de match"
+              description="Continuez à explorer pour trouver vos premiers matches."
+              actionLabel="Découvrir des profils"
+              onAction={() => router.push(ROUTES.discover)}
+            />
+          ) : (
+            <>
+              <SectionTitle>Nouveaux matchs</SectionTitle>
+              <div className="-mx-[22px] flex gap-3.5 overflow-x-auto px-[22px] pb-2">
+                {matches.map((item, index) => (
+                  <m.button
+                    key={item.matchId}
+                    type="button"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: Math.min(index, 8) * 0.05 }}
+                    onClick={() => router.push(`/chat/${item.matchId}`)}
+                    className="flex w-[62px] shrink-0 flex-col items-center gap-1.5"
+                  >
+                    <Avatar
+                      src={item.partnerAvatarUrl ?? undefined}
+                      seed={item.partnerFirstName}
+                      size={62}
+                      ringColor={
+                        onlineIds.has(item.partnerId) ||
+                        isRecentlyOnline(item.partnerLastActiveAt)
+                          ? "#3ECf8E"
+                          : "#D99B2B"
+                      }
+                    />
+                    <span className="font-display text-foreground w-full truncate text-center text-[10px]">
+                      {item.partnerFirstName}
+                    </span>
+                  </m.button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       ) : (
         <div className="relative z-10 flex-1 px-[22px] pb-4">

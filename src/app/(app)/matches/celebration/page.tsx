@@ -12,6 +12,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { GhostButton } from "@/components/ui/ghost-button";
 import { ROUTES } from "@/constants/routes";
 import { useProfileQuery } from "@/features/profile/hooks/use-profile";
+import { useConversationsQuery } from "@/features/messaging/hooks/use-messaging";
 
 function Confetti({
   top,
@@ -47,12 +48,24 @@ function Confetti({
 function CelebrationContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const partnerId = params.get("id") ?? "";
   const matchName = params.get("name") ?? "";
   const myProfile = useProfileQuery().data;
 
-  // Le chat temps réel arrive au Jalon 9 : sans conversation en cache, « Dis
-  // bonjour » ouvre la liste des messages — exactement le repli du mobile.
-  const openChat = () => router.replace(ROUTES.messages);
+  // Le chat a besoin de l'id du MATCH, pas de l'id du profil : on retrouve le
+  // match tout frais dans la liste des conversations (invalidée au match). Sans
+  // conversation encore en cache, repli sur la liste des messages (comme mobile).
+  const conversationsQuery = useConversationsQuery();
+  const conversation = conversationsQuery.data?.find(
+    (c) => c.partnerId === partnerId,
+  );
+  const openChat = () => {
+    if (conversation) {
+      router.replace(`/chat/${conversation.matchId}`);
+    } else {
+      router.replace(ROUTES.messages);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col">

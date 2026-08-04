@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~52 %**
-_(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée + découverte/matching complets ; messagerie, notifications, premium à migrer)_
+**Avancement global : ~60 %**
+_(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée + découverte/matching + messagerie temps réel complets ; notifications, premium, modération à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 8 (Découverte & Matching) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 9 (Messagerie temps réel) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -27,7 +27,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 8 (Découverte & Matching) livré.
 | 6 | Profil (mon profil / édition / public) | ✅ terminé |
 | 7 | Recherche avancée | ✅ terminé |
 | 8 | Découverte & Matching | ✅ terminé |
-| 9 | Messagerie temps réel | ❌ à faire |
+| 9 | Messagerie temps réel | ✅ terminé |
 | 10 | Notifications | ❌ à faire |
 | 11 | Paiements (Premium / CamerPay) | ❌ à faire |
 | 12 | Modération / comptes / légal (+ Admin ?) | ❌ à faire |
@@ -77,8 +77,8 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [x] Favoris (signets, `profile_favorites`) + « Qui vous a aimé » (likers premium)
 - [x] Limite quotidienne (écran `/discover/like-limit`, reset minuit)
 - [x] Localisation / distance / diaspora (heartbeat + géoloc navigateur, `search_profiles`)
-- [~] Recherche texte libre (`searchByText` livré au service ; UI recherche matchs → J9)
-- [~] Liste des matchs (conversations) → J9 (messagerie temps réel)
+- [x] Recherche texte libre (`searchByText`) ; recherche de matchs livrée au J9
+- [x] Liste des matchs (rangée « Nouveaux matchs » câblée sur les conversations, J9)
 
 ### Recherche avancée
 - [x] Hub + 11 filtres (age, city, country, distance, education, height, languages, lifestyle, profession, religion, verified)
@@ -87,12 +87,13 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [x] Garde session + profil complété ; « Rechercher » ouvre la découverte (application effective des filtres → J8)
 
 ### Messagerie
-- [ ] Liste conversations
-- [ ] Chat temps réel (Realtime)
-- [ ] Envoi / lecture / non-lus
-- [ ] Présence (online-members)
-- [ ] Emoji picker
-- [ ] Action sheet (bloquer / signaler)
+- [x] Liste conversations (`get_my_conversations`) + horodatage + non-lus
+- [x] Chat temps réel (Realtime `postgres_changes` sur `messages`)
+- [x] Envoi (optimiste) / lecture (`mark_messages_read`) / non-lus (`CountBadge`)
+- [x] Présence (canal `online-members`, `usePresenceSync` montée dans le shell)
+- [x] Emoji picker (route `/chat/[id]/emoji-picker` + `chatComposerStore`)
+- [x] Action sheet (bloquer / supprimer le match ; signaler → J12)
+- [x] Recherche de matchs (`/matches/search`) + rangée « Nouveaux matchs »
 
 ### Notifications
 - [ ] In-app + Realtime
@@ -561,7 +562,51 @@ le plan (« SwipeCard framer-motion drag »).
 `/discover/like-limit`, `/matches`, `/matches/celebration`). **Régressions** :
 aucune — les placeholders `/discover` et `/matches` du Jalon 3 sont remplacés.
 
-➡️ **Prochaine étape : Jalon 9 — Messagerie (temps réel)** (liste conversations
-`get_my_conversations`, chat `/chat/[id]` Realtime, envoi/lecture/non-lus,
-présence `online-members`, recherche de matchs, célébration → vrai chat). En
-attente de feu vert.
+➡️ **Jalon 9 livré** (voir ci-dessous).
+
+## Journal — Jalon 9 : Messagerie temps réel
+
+**Analyse (source de vérité `afrolove-world-mob`)** : lecture complète du module
+`messaging` (types, utils/time, messagingService avec Realtime, useMessaging,
+ChatScreen, ConversationListScreen, EmojiPickerScreen, ConversationActionSheet,
+chatComposerStore) + `presenceStore` (canal `online-members`) et les actions de
+modération utilisées par la feuille (`blockUser`, `unmatch`). Backend partagé
+(`get_my_conversations`, table `messages` en publication Realtime,
+`mark_messages_read`, `blocks`, suppression de `matches`).
+
+**Livré** :
+- `features/messaging/` — `types` (Conversation, ChatMessage), `utils/time`
+  (formatConversationTime / formatMessageTime), `service` (fetchConversations,
+  fetchMessages, sendMessage, markConversationRead, subscribeToMessages/
+  unsubscribe via Realtime `postgres_changes`), `stores/composer-store`
+  (`pendingEmoji`), `hooks/use-messaging` (conversations, messages **live** avec
+  ajout au cache + lecture auto, envoi optimiste, mark-read), composant
+  `ConversationActionSheet` (Drawer vaul, confirmations en ligne).
+- `features/moderation/` — service + hooks **bloquer / supprimer le match**
+  (le reste — signalements, blocked-users, déblocage — au Jalon 12).
+- `features/presence/` — `usePresenceStore` + `usePresenceSync` (canal Realtime
+  `online-members`, clé = user id), monté via `AppPresence` dans `(app)` et
+  `chat`.
+- Écrans : `/messages` (liste conversations, non-lus, présence, feuille
+  d'actions), `/chat/[matchId]` (chat temps réel plein écran, en-tête présence,
+  bulles dégradé/verre, composeur Entrée-pour-envoyer, `→ /profile/[id]`),
+  `/chat/[matchId]/emoji-picker`, `/matches/search` (recherche de matchs).
+- Câblages J8→J9 : onglet Matchs (rangée « Nouveaux matchs » + badge « N
+  nouveaux » + barre de recherche), célébration « Dis bonjour » ouvre désormais
+  le vrai chat (`/chat/[matchId]` via lookup conversation), présence temps réel
+  ajoutée aux cartes de découverte (`onlineIds` ∪ heartbeat).
+
+**Écarts assumés (séquencés)** : « Signaler » → toast « bientôt » (écran de
+signalement `/reports/[id]` au Jalon 12) ; pas de pièces jointes (parité stricte,
+texte uniquement) ; feuille d'actions ouverte par un bouton ⋯ (le web n'a pas
+d'appui long naturel). Le badge non-lus de la barre d'onglets suit le mobile
+(absent — `BottomNavBar` n'en a pas).
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (54 routes, dont `/messages`, `/chat/[matchId]`,
+`/chat/[matchId]/emoji-picker`, `/matches/search`). **Régressions** : aucune —
+le placeholder `/messages` du Jalon 3 est remplacé.
+
+➡️ **Prochaine étape : Jalon 10 — Notifications** (in-app + Realtime sur
+`notifications`, écran `/notifications`, badge compteur, **Web Push** VAPID +
+Service Worker `push_tokens`, navigation au clic). En attente de feu vert.

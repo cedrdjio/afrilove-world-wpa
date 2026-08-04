@@ -25,6 +25,7 @@ import {
   useToggleFavorite,
 } from "@/features/favorites/hooks/use-favorites";
 import { isRecentlyOnline } from "@/lib/presence";
+import { usePresenceStore } from "@/features/presence/store";
 import {
   SwipeCard,
   type SwipeDirection,
@@ -54,6 +55,7 @@ export default function DiscoverPage() {
     useState<SwipeDirection | null>(null);
   const swipe = useSwipe();
   const entitlements = useEntitlements();
+  const onlineIds = usePresenceStore((s) => s.onlineIds);
 
   // Filtres actifs → signature du deck + fonction de chargement. Le deck
   // lui-même vit dans le deckStore : revenir sur cet écran ne recharge rien.
@@ -322,7 +324,10 @@ export default function DiscoverPage() {
                   isTop={i === 0}
                   stackIndex={i}
                   commandedDirection={i === 0 ? commandedDirection : null}
-                  isOnline={isRecentlyOnline(profile.lastActiveAt)}
+                  isOnline={
+                    onlineIds.has(profile.id) ||
+                    isRecentlyOnline(profile.lastActiveAt)
+                  }
                   onSwiped={(direction) => handleSwiped(direction, profile)}
                   onTap={() => router.push(`/profile/${profile.id}`)}
                 />
