@@ -9,7 +9,7 @@ import {
   useTransform,
   type Variants,
 } from "framer-motion";
-import { Heart, Sparkles, X } from "lucide-react";
+import { Heart, RotateCcw, Sparkles, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -135,7 +135,7 @@ export function SwipeDeckView({
         )}
 
         {next && (
-          <div className="absolute inset-0 scale-[0.94] opacity-70">
+          <div className="absolute inset-0 -translate-y-4 scale-[0.94] opacity-60">
             <ProfileCard card={next} />
           </div>
         )}
@@ -158,14 +158,14 @@ export function SwipeDeckView({
       </div>
 
       {top && (
-        <div className="z-20 flex items-center justify-center gap-4 py-5">
+        <div className="relative z-20 -mt-8 flex items-center justify-center gap-5 pb-1">
           <ActionButton
             label="Revenir en arrière"
             onClick={onRewind}
             disabled={!canRewind}
-            className="text-warning size-12"
+            className="size-12 text-white/80"
           >
-            <RewindIcon />
+            <RotateCcw className="size-5" aria-hidden />
           </ActionButton>
           <ActionButton
             label="Passer"
@@ -177,16 +177,16 @@ export function SwipeDeckView({
           <ActionButton
             label="J'aime"
             onClick={() => onDecide("like")}
-            className="gradient-signature shadow-brand size-[4.75rem] scale-110 border-white/40 text-white"
+            className="gradient-signature shadow-brand size-[4.75rem] scale-105 border-white/30 text-white"
           >
             <Heart className="size-9 fill-current" aria-hidden />
           </ActionButton>
           <ActionButton
             label="Super like"
             onClick={() => onDecide("super")}
-            className="text-brand-300 size-16"
+            className="text-brand-300 size-12"
           >
-            <Sparkles className="size-6 fill-current" aria-hidden />
+            <Sparkles className="size-5 fill-current" aria-hidden />
           </ActionButton>
         </div>
       )}
@@ -261,22 +261,6 @@ function ActionButton({
     >
       {children}
     </button>
-  );
-}
-
-function RewindIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden
-    >
-      <path d="M3 12a9 9 0 1 1 3 6.7M3 12V7m0 5h5" />
-    </svg>
   );
 }
 
