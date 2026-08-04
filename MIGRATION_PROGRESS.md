@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~34 %**
-_(fondations + design system + navigation/shell + authentification + onboarding complets ; cœur métier — profil, recherche, découverte, messagerie — à migrer)_
+**Avancement global : ~42 %**
+_(fondations + design system + navigation/shell + authentification + onboarding + profil complets ; cœur métier — recherche, découverte, messagerie — à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 5 (Onboarding) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 6 (Profil) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -24,7 +24,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 5 (Onboarding) livré.
 | 3 | Navigation & Shell | ✅ terminé |
 | 4 | Authentification | ✅ terminé |
 | 5 | Onboarding (carousel → finish) | ✅ terminé |
-| 6 | Profil (mon profil / édition / public) | ❌ à faire |
+| 6 | Profil (mon profil / édition / public) | ✅ terminé |
 | 7 | Recherche avancée | ❌ à faire |
 | 8 | Découverte & Matching | ❌ à faire |
 | 9 | Messagerie temps réel | ❌ à faire |
@@ -59,13 +59,15 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [x] Carousel intro + écran de fin + persistance du brouillon → resolving
 
 ### Profil
-- [ ] Mon profil (partiel : lecture seule)
-- [ ] Profil public `/profile/[id]` + galerie
-- [ ] Édition (13 écrans)
-- [ ] Gestion photos (réordre / principale / suppression)
-- [ ] Stats & vues de profil
-- [ ] Complétion profil
-- [ ] Données de référence (catalogues complets)
+- [x] Mon profil (héros, complétion, vérif, bio, intérêts, stats, aperçu)
+- [x] Profil public `/profile/[id]` + galerie plein écran (lecture seule)
+- [x] Édition — hub + 11 éditeurs (base, photos, bio, intérêts, mode de vie,
+  langues, religion, éducation, profession, taille, préférences)
+- [x] Gestion photos (ajout / remplacement / suppression / principale / réordre)
+- [x] Stats & vues de profil (`get_my_profile_stats`, `record_profile_view`)
+- [x] Complétion profil (anneau + checklist)
+- [x] Données de référence (intérêts, langues, religions, éducation, objectifs,
+  lifestyle)
 
 ### Découverte & Matching
 - [ ] Deck de swipe (`search_profiles`)
@@ -410,6 +412,61 @@ notification-permission → finish → resolving`.
 **Régressions** : aucune. L'onboarding partiel devient complet ; l'inscription
 perd son champ prénom (déplacé, pas supprimé) sans casser le flux auth (J4).
 
-➡️ **Prochaine étape : Jalon 6 — Profil** (mon profil, édition, profil public
-`/profile/[id]` + galerie, gestion des photos, langues/religion/éducation…).
-En attente de feu vert.
+---
+
+## Journal — Jalon 6 : Profil
+
+**Objectif** : migrer tout le module profil mobile (le plus vaste) — mon profil,
+hub d'édition + 11 éditeurs, complétion, aperçu, fiche publique, galerie —
+fidèlement, en déférant proprement les liens transverses.
+
+**Couche data créée** (`src/features/profile/`)
+- `types.ts` — `Profile` normalisé (camelCase, relations agrégées),
+  `computeProfileCompletion`, `calculateAge`, constantes.
+- `service.ts` — `fetchOwnProfile` (relations), `fetchPublicProfile`
+  (RPC `get_public_profile`), `updateProfile`, `setInterests`/`setLanguages`,
+  photos (add/replace/delete/reorder via Edge `upload-photo`),
+  `fetchProfileStats` (`get_my_profile_stats`), `recordProfileView`.
+- `hooks/` — `useProfileQuery`/`useOtherProfileQuery`, `useUpdateProfile`/
+  `Interests`/`Languages`, `usePhotoManagement`, `useProfileStats`,
+  `useProfileDisplayData`, données de référence (langues/religions/éducation/
+  objectifs ; intérêts et lifestyle réutilisés de l'onboarding).
+
+**Écrans**
+- `(app)/profile` — Mon profil : héros photo + identité, carte de complétion
+  animée, bandeau de vérification, bio, puces d'intérêts, stats (likes/matches/
+  taux), aperçu public, encart Premium.
+- `(app)/profile/preview` — aperçu de son propre profil (composant partagé).
+- `(app)/profile/[id]` — fiche publique **lecture seule** (RPC + `recordProfileView`).
+- `(app)/profile/[id]/gallery` — galerie plein écran (swipe, flèches, compteur,
+  zoom au clic).
+- `edit-profile` — hub + 11 éditeurs (`basic-info`, `photos`, `bio`,
+  `interests`, `lifestyle`, `languages`, `religion`, `education`, `job`,
+  `height`, `preferences`), gardés par `RequireOnboarded`.
+- `profile-completion` — écran réel (anneau SVG + checklist), remplace le
+  placeholder du J3.
+- Composants partagés : `ProfileDetailView`, `EditScreenLayout`, `InfoRow`,
+  `ChoiceList` ; garde `RequireOnboarded`.
+
+**Décisions de périmètre / fidélité**
+- **Vue publique lecture seule** : la barre d'actions Découverte (J'aime /
+  passer / favori) relève du Jalon 8, signaler/bloquer du Jalon 12. Le composant
+  `ProfileDetailView` expose déjà les variantes ; les actions seront ajoutées.
+- **Liens transverses** (Premium → J11, KYC/vérif & Paramètres → J12) : affichés
+  fidèlement mais neutralisés par un toast « Bientôt disponible » plutôt que des
+  404, en attendant leurs jalons.
+- **Préférences** : maquette locale non persistée, comme sur mobile ; les vraies
+  préférences de recherche relèvent du Jalon 7.
+- **Réorganisation photos** : glisser-déposer HTML5 (équivalent web du drag par
+  appui long) ; la progression fine d'upload du mobile n'est pas exposée par
+  l'invocation Edge (état `isPending`). Galerie : zoom au clic (vs pincer natif).
+- **Init des éditeurs** : dérivée en rendu (pattern React recommandé) plutôt que
+  dans un effet, pour respecter `react-hooks/set-state-in-effect`.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (38 routes, dont 11 éditeurs + `/profile/[id]` + galerie + aperçu).
+**Régressions** : aucune. La page profil passe de lecture seule à complète ; la
+complétion devient réelle.
+
+➡️ **Prochaine étape : Jalon 7 — Recherche avancée** (filtres, `search_profiles`,
+préférences persistées, résultats). En attente de feu vert.
