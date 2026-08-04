@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~11 %**
-_(fondations Jalon 1 posées ; auth + onboarding partiels ; cœur métier à migrer)_
+**Avancement global : ~16 %**
+_(fondations + design system posés ; auth + onboarding partiels ; cœur métier à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 1 (Architecture & fondations) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 2 (Design System) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -20,7 +20,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 1 (Architecture & fondations) livr
 | --- | --- | --- |
 | 0 | Cadrage & décisions (admin, web push, CamerPay web) | ✅ validé |
 | 1 | Architecture & fondations | ✅ terminé |
-| 2 | Design System (glass lavande) | 🟡 partiel |
+| 2 | Design System (glass lavande) | ✅ terminé |
 | 3 | Navigation & Shell | 🟡 partiel |
 | 4 | Authentification | 🟡 partiel |
 | 5 | Onboarding (12 étapes) | 🟡 partiel |
@@ -167,5 +167,42 @@ absence de journal client, clés de cache éparses, carte de routes incomplète
 **Note de suivi** : réconcilier `/likes` (web) ↔ `/matches` (mobile) au Jalon 3
 lors de la refonte du `BottomNav`.
 
-➡️ **Prochaine étape : Jalon 2 — Design System (charte glass lavande).**
-En attente de feu vert avant de démarrer le code du Jalon 2.
+### 2026-08-04 — Jalon 2 : Design System (glass lavande) ✅
+**Analyse d'écart** : les tokens (couleurs `#9B7EDE`/violets, fonts Jakarta+Nunito,
+utilitaire `.glass`, dégradés, radii) étaient **déjà alignés** dans `globals.css`.
+L'écart réel : les primitives UI (le mobile en a ~18, le web ~9 génériques). Port
+fidèle des composants manquants, charte respectée à l'identique.
+
+**Fichiers créés — primitives UI** (`src/components/ui/`)
+- `photo-placeholder.tsx` (+ `photoSeedFromString`, hash identique au mobile pour
+  une teinte stable), `avatar.tsx`, `badges.tsx` (Verified/Match/Count),
+  `chip.tsx` (dégradé si sélectionné, tap + haptique), `gradient-button.tsx`,
+  `ghost-button.tsx`, `icon-button.tsx` (verre + pastille), `glass-card.tsx`
+  (reflet Fluent), `glass-input.tsx` (label/icônes/erreur, forwardRef),
+  `settings-row.tsx`, `progress-steps.tsx`, `range-slider.tsx` (`Slider` +
+  `DualSlider`, pointer events), `typography.tsx`.
+
+**Fichiers créés — layout** (`src/components/layout/`)
+- `glow-orb.tsx` (halo radial flottant, framer-motion), `screen-background.tsx`
+  (dégradé lavande + nuit auto en `.dark` + halos), `screen-header.tsx`
+  (retour verre + titre).
+
+**Fichiers créés — feedback** (`src/components/feedback/`)
+- `empty-state.tsx` (cœur flottant + CTA), `error-state.tsx` (mappe `AppError`
+  → icône + titre + message + « Réessayer »), `skeleton.tsx` (+ `SkeletonCircle`),
+  `index.ts`.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) · `pnpm build` ✅.
+**Régressions** : aucune (composants nouveaux, non encore montés dans les pages).
+
+**Notes de parité (à finaliser à la consommation)**
+- **Lottie** : les loaders Lottie mobiles (`hearts-loader`, `success-burst`,
+  `empty-hearts`) sont remplacés par une animation cœur framer-motion. Passer à
+  `lottie-react` + copie des JSON si la parité stricte est exigée (Jalon 13).
+- **ToggleSwitch** : le `Switch` Radix existant (`components/ui/switch.tsx`) est
+  conservé plutôt qu'un doublon — restyle si nécessaire au Jalon 12.
+- **BrandLogo** : couvert par `components/brand/logo.tsx` existant.
+
+➡️ **Prochaine étape : Jalon 3 — Navigation & Shell** (app shell, BottomNav
+réconcilié `/matches`, groupes de routes avec gardes, états système).
+En attente de feu vert avant de démarrer le Jalon 3.
