@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { m } from "framer-motion";
 import { SlidersHorizontal, Bell } from "lucide-react";
-import { toast } from "sonner";
 
 import { ScreenBackground } from "@/components/layout/screen-background";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -189,9 +188,7 @@ export default function DiscoverPage() {
             message.includes("SUPER_LIKE_PREMIUM_ONLY") ||
             message.includes("SUPER_LIKE_LIMIT_REACHED")
           ) {
-            toast("Premium arrive bientôt", {
-              description: "Les super-likes se débloqueront avec le Jalon 11.",
-            });
+            router.push(ROUTES.premiumLocked);
           }
         },
       },
@@ -283,11 +280,7 @@ export default function DiscoverPage() {
         {swipesRemaining != null ? (
           <button
             type="button"
-            onClick={() =>
-              toast("Premium arrive bientôt", {
-                description: "Les forfaits se débloquent au Jalon 11.",
-              })
-            }
+            onClick={() => router.push(ROUTES.premium)}
             className="border-brand-500/20 bg-brand-500/[0.08] text-brand-600 font-display ml-auto rounded-full border px-3 py-1.5 text-[10.5px] uppercase"
           >
             {swipesRemaining} swipe{swipesRemaining > 1 ? "s" : ""}

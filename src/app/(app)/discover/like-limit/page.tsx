@@ -3,11 +3,11 @@
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Clock, Heart, X } from "lucide-react";
-import { toast } from "sonner";
 
 import { ScreenBackground } from "@/components/layout/screen-background";
 import { GlowOrb } from "@/components/layout/glow-orb";
 import { GradientButton } from "@/components/ui/gradient-button";
+import { ROUTES } from "@/constants/routes";
 
 /** Le plafond DB se réinitialise à minuit local — on affiche le vrai reste. */
 function timeUntilMidnight(): string {
@@ -76,11 +76,7 @@ function LikeLimitContent() {
         <GradientButton
           label="Voir les forfaits"
           className="mb-3 w-full"
-          onClick={() =>
-            toast("Premium arrive bientôt", {
-              description: "Les forfaits se débloquent au Jalon 11.",
-            })
-          }
+          onClick={() => router.push(ROUTES.premium)}
         />
         <button
           type="button"

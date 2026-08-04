@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~66 %**
+**Avancement global : ~72 %**
 _(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée + découverte/matching + messagerie temps réel complets ; notifications, premium, modération à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 10 (Notifications + Web Push) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 11 (Premium / Paiements CamerPay) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -29,7 +29,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 10 (Notifications + Web Push) livr
 | 8 | Découverte & Matching | ✅ terminé |
 | 9 | Messagerie temps réel | ✅ terminé |
 | 10 | Notifications | ✅ terminé |
-| 11 | Paiements (Premium / CamerPay) | ❌ à faire |
+| 11 | Paiements (Premium / CamerPay) | ✅ terminé |
 | 12 | Modération / comptes / légal (+ Admin ?) | ❌ à faire |
 | 13 | Optimisations (perf / PWA / SEO) | ❌ à faire |
 | 14 | QA & non-régression | ❌ à faire |
@@ -106,9 +106,12 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
   reste à provisionner sur le Supabase partagé (clé privée VAPID = secret serveur)
 
 ### Premium / Paiements
-- [ ] Landing / pricing / features / locked
-- [ ] Checkout CamerPay + callback/success/failed
-- [ ] Entitlements / has_active_premium
+- [x] Landing / pricing / features / locked (thème nuit, forfaits `premium_plans`)
+- [x] Checkout CamerPay + callback/success/failed (fenêtre + polling `payment-status`)
+- [x] Entitlements / has_active_premium (déjà lu au J8 ; achat re-fetch entitlements+likers)
+- [x] Mobile Money (détection MTN/Orange, saisie numéro) + carte/PayPal (page hébergée)
+- [x] Déverrouillage : super-like → `/premium/locked`, « Qui vous a aimé » →
+  `/premium`, limite quotidienne + compteur swipes + carte profil → `/premium`
 
 ### KYC / Vérification
 - [ ] Upload id / selfie / recap
@@ -664,6 +667,62 @@ le toast « Notifications bientôt » du header Découvrir est remplacé par la 
 navigation ; l'étape d'onboarding « notifications » reste inchangée (elle ne
 faisait que solliciter la permission, l'abonnement réel arrive avec ce jalon).
 
-➡️ **Prochaine étape : Jalon 11 — Paiements (Premium / CamerPay)** (forfaits,
-tunnel de paiement CamerPay via Edge Functions `payment-*`, déverrouillage
-super-likes / likers / boosts, écrans `/premium/*`). En attente de feu vert.
+➡️ **Jalon 11 livré** (voir ci-dessous).
+
+## Journal — Jalon 11 : Premium & Paiements CamerPay
+
+**Analyse (source de vérité `afrolove-world-mob`)** : lecture complète du module
+`premium` — `constants/plans` (tons par clé, meilleur plan, peg EUR→XAF),
+`services/premiumService` (fetchPlans, fetchEntitlements, purchasePlan,
+fetchFavorites, fetchLikers), `hooks/usePremium`, la couche `payments/`
+(abstraction `PaymentProvider`, registre `paymentService`, `camerpayProvider`
+via `openAuthSessionAsync` + polling, `mobileMoney` détection MTN/Orange), et
+les écrans (Landing, Pricing, Features, Checkout, Success, Failed, Locked +
+route callback). Backend partagé : `premium_plans`, `payment_transactions`, RPC
+`get_my_entitlements`/`get_my_favorites`/`get_my_likers`, et les **Edge Functions
+`payment-initiate` / `payment-status` / `payment-webhook` / `payment-return`**
+(déjà présentes et miroir dans le repo web).
+
+**Livré** :
+- `features/premium/payments/` — port de l'abstraction : `types` (contrat
+  PaymentProvider + `CheckoutContext` web), `mobile-money` (détection opérateur,
+  normalisation +237, format), `camerpay-provider` (**adaptation web** :
+  `payment-initiate` → **fenêtre CamerPay** ouverte dans le geste utilisateur →
+  polling `payment-status` jusqu'à résolution, repli lecture directe de
+  `payment_transactions` ; **repli redirection pleine page** + reprise via
+  `/premium/callback` si la fenêtre est bloquée), `index` (registre + service).
+- `features/premium/` — `service` étendu (fetchPlans, purchasePlan, fetchFavorites
+  + FavoriteProfile), `constants/plans` (tons, helpers prix/durée/XAF),
+  `hooks/use-premium` (usePremiumPlans, usePurchasePlan avec re-fetch
+  entitlements+likers sur 'succeeded', useFavorites), composant `PricingCard`.
+- Écrans `/premium/*` (+ layout garde plein écran thème nuit) : **landing**
+  (avantages + grille forfaits + badge « Meilleur »), **pricing** (cartes
+  sélectionnables + CTA gradient), **features**, **checkout** (méthode
+  Mobile Money / carte / PayPal, saisie numéro + détection opérateur temps réel,
+  montant FCFA, lancement paiement, routage succès/en cours/échec), **success**,
+  **failed**, **locked**, **callback** (reprise polling).
+- Déverrouillage câblé (fin des toasts « J11 ») : super-like →
+  `/premium/locked` ; « Qui vous a aimé » (Mes Matches) → `/premium` ; limite
+  quotidienne, compteur de swipes (Découvrir) et carte Premium (Profil) →
+  `/premium`.
+
+**Adaptation web assumée (parité fonctionnelle, pas de simplification)** : le
+mobile ouvre la page CamerPay dans un in-app browser et écoute le deep link de
+retour ; le web n'a pas d'équivalent, on ouvre donc une **fenêtre** et on
+interroge `payment-status` (même logique de polling, mêmes fenêtres 90 s /
+grâce 12 s, mêmes issues normalisées). Le webhook reste la **source de vérité** —
+l'activation Premium est côté serveur, inchangée. La configuration CamerPay
+(token API, `CAMERPAY_RETURN_URL` web) relève des secrets serveur partagés,
+hors couche front-end. Aperçu public / boost profil : gating prêt, écran boost
+non prévu au périmètre mobile.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (8 routes premium : `/premium`, `/premium/pricing`,
+`/premium/features`, `/premium/checkout`, `/premium/success`, `/premium/failed`,
+`/premium/locked`, `/premium/callback`). **Régressions** : aucune — tous les
+toasts « Premium arrive bientôt (J11) » remplacés par la navigation réelle.
+
+➡️ **Prochaine étape : Jalon 12 — Modération / comptes / légal** (signalements
+`/reports/[id]`, utilisateurs bloqués `/blocked-users` + déblocage, réglages
+`/settings/*`, changement email/mot de passe, suppression de compte, KYC
+`/kyc/*`, documents légaux `/legal/[key]`). En attente de feu vert.

@@ -1,13 +1,28 @@
 import { type createClient } from "@/services/supabase/client";
+import { paymentService } from "@/features/premium/payments";
+import type {
+  CheckoutContext,
+  CheckoutInput,
+  PaymentResult,
+} from "@/features/premium/payments";
 
 type Client = ReturnType<typeof createClient>;
 
 /**
- * Droits & compteurs du compte — port partiel de `premiumService` (mobile),
- * limité à la LECTURE dont la Découverte et Mes Matches ont besoin au Jalon 8
- * (compteur de swipes, limites gratuites, « qui vous a aimé »). Les forfaits,
- * le paiement CamerPay et le déverrouillage relèvent du Jalon 11.
+ * Droits, compteurs, forfaits & paiement du compte — port de `premiumService`
+ * (mobile). Lecture (compteurs, limites, « qui vous a aimé ») livrée au Jalon 8 ;
+ * forfaits + achat CamerPay + déverrouillage ajoutés au Jalon 11.
  */
+
+export interface PremiumPlan {
+  key: string;
+  label: string;
+  description: string | null;
+  priceCents: number;
+  currency: string;
+  durationDays: number;
+  sortOrder: number;
+}
 export interface Entitlements {
   isPremium: boolean;
   premiumUntil: string | null;
@@ -34,6 +49,62 @@ export interface LikerProfile {
   isVerified: boolean;
   action: "like" | "super_like";
   likedAt: string;
+}
+
+export interface FavoriteProfile extends LikerProfile {
+  isMatched: boolean;
+}
+
+export async function fetchPlans(supabase: Client): Promise<PremiumPlan[]> {
+  const { data, error } = await supabase
+    .from("premium_plans")
+    .select(
+      "key, label, description, price_cents, currency, duration_days, sort_order",
+    )
+    .eq("is_active", true)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    key: row.key,
+    label: row.label,
+    description: row.description,
+    priceCents: row.price_cents,
+    currency: row.currency,
+    durationDays: row.duration_days,
+    sortOrder: row.sort_order,
+  }));
+}
+
+/**
+ * Achat réel : ouvre le paiement du fournisseur actif (CamerPay) et résout une
+ * issue normalisée. Le premium est accordé côté serveur par le webhook du
+ * fournisseur (même noyau `grant_subscription()`) — empilement, expiration,
+ * limites et gating inchangés. L'appelant route selon `outcome` ; les droits
+ * sont re-fetchés sur 'succeeded'.
+ */
+export async function purchasePlan(
+  supabase: Client,
+  input: CheckoutInput,
+  ctx?: CheckoutContext,
+): Promise<PaymentResult> {
+  return paymentService.checkout(supabase, input, ctx);
+}
+
+export async function fetchFavorites(
+  supabase: Client,
+): Promise<FavoriteProfile[]> {
+  const { data, error } = await supabase.rpc("get_my_favorites");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.profile_id,
+    firstName: row.first_name ?? "",
+    avatarUrl: row.avatar_url,
+    city: row.city,
+    isVerified: row.is_verified,
+    action: row.action as "like" | "super_like",
+    likedAt: row.liked_at,
+    isMatched: row.is_matched,
+  }));
 }
 
 export async function fetchEntitlements(

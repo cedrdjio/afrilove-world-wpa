@@ -272,10 +272,10 @@ export default function ProfilePage() {
           </span>
         </button>
 
-        {/* Premium (J11) */}
+        {/* Premium */}
         <button
           type="button"
-          onClick={soon}
+          onClick={() => router.push("/premium")}
           className="gradient-signature shadow-brand mt-1 flex items-center gap-3.5 rounded-2xl p-4 text-left text-white"
         >
           <span className="grid size-11 place-items-center rounded-2xl bg-white/[0.18]">

@@ -11,7 +11,6 @@ import {
   Bookmark,
   Search as SearchIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 
 import { ScreenBackground } from "@/components/layout/screen-background";
 import { GlowOrb } from "@/components/layout/glow-orb";
@@ -64,10 +63,7 @@ export default function MatchesPage() {
   const matches = conversationsQuery.data ?? [];
   const newMatchesCount = matches.filter((mtc) => !mtc.lastMessage).length;
 
-  const premiumSoon = () =>
-    toast("Premium arrive bientôt", {
-      description: "Le déverrouillage « Qui vous a aimé » arrive au Jalon 11.",
-    });
+  const openPremium = () => router.push(ROUTES.premium);
 
   return (
     <div className="relative flex flex-1 flex-col">
@@ -191,7 +187,7 @@ export default function MatchesPage() {
           ) : likersCount > 0 ? (
             <button
               type="button"
-              onClick={premiumSoon}
+              onClick={openPremium}
               className="border-border/70 bg-card/45 mb-6 flex w-full items-center gap-3 rounded-2xl border-[1.5px] px-4 py-3 text-left"
             >
               <span className="bg-brand-500/10 grid size-9 place-items-center rounded-full">
