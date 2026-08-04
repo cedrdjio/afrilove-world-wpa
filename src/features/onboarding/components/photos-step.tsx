@@ -5,36 +5,37 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { uploadProfilePhoto } from "@/features/onboarding/service";
+import { MAX_PHOTOS, MIN_PHOTOS } from "@/features/onboarding/types";
 import { cn } from "@/lib/utils";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useSupabase } from "@/providers/supabase-provider";
 
-const MAX_PHOTOS = 6;
-
 /**
- * Étape photos : téléverse via l'Edge Function `upload-photo`. Facultative pour
- * terminer l'onboarding (mais 2 photos sont requises pour apparaître dans la
- * découverte). Remonte le nombre de photos au parent.
+ * Étape photos — port de `UploadPhotosScreen`. Téléverse via l'Edge Function
+ * `upload-photo` (écriture S3 côté serveur). Les URLs sont conservées dans le
+ * brouillon persisté : la condition « min. 2 photos » et l'aperçu survivent à
+ * un rafraîchissement. La première photo est la principale (badge + avatar via
+ * trigger). La suppression est locale ; le nettoyage serveur relève de la
+ * gestion des photos du profil (Jalon 6).
  */
 export function PhotosStep({
-  onCountChange,
+  photos,
+  onChange,
 }: {
-  onCountChange: (count: number) => void;
+  photos: string[];
+  onChange: (photos: string[]) => void;
 }) {
   const supabase = useSupabase();
   const haptic = useHaptics();
   const inputRef = useRef<HTMLInputElement>(null);
-  const [urls, setUrls] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 
   async function handleFile(file: File) {
-    if (urls.length >= MAX_PHOTOS) return;
+    if (photos.length >= MAX_PHOTOS) return;
     setBusy(true);
     try {
-      const { url } = await uploadProfilePhoto(supabase, file, urls.length);
-      const next = [...urls, url];
-      setUrls(next);
-      onCountChange(next.length);
+      const { url } = await uploadProfilePhoto(supabase, file, photos.length);
+      onChange([...photos, url]);
       haptic("success");
     } catch {
       haptic("error");
@@ -47,18 +48,14 @@ export function PhotosStep({
   }
 
   function removeAt(i: number) {
-    // Suppression locale de l'aperçu (le nettoyage serveur viendra avec la
-    // gestion des photos du profil).
-    const next = urls.filter((_, idx) => idx !== i);
-    setUrls(next);
-    onCountChange(next.length);
+    onChange(photos.filter((_, idx) => idx !== i));
   }
 
   return (
     <div className="flex flex-col gap-4">
       <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: MAX_PHOTOS }).map((_, i) => {
-          const url = urls[i];
+          const url = photos[i];
           if (url) {
             return (
               <div
@@ -79,10 +76,15 @@ export function PhotosStep({
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
+                {i === 0 ? (
+                  <span className="gradient-signature absolute bottom-1.5 left-1.5 rounded-full px-2 py-0.5 text-[8px] font-bold tracking-wide text-white">
+                    Principal
+                  </span>
+                ) : null}
               </div>
             );
           }
-          const isNext = i === urls.length;
+          const isNext = i === photos.length;
           return (
             <button
               key={i}
@@ -119,8 +121,8 @@ export function PhotosStep({
       />
 
       <p className="text-muted-foreground text-sm leading-relaxed">
-        Ajoutez au moins 2 photos pour apparaître dans la découverte. Vous
-        pouvez aussi le faire plus tard depuis votre profil.
+        Soyez authentique — 3 photos = 4× plus de visibilité. Min. {MIN_PHOTOS}{" "}
+        photos requises pour apparaître dans la découverte.
       </p>
     </div>
   );

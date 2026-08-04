@@ -58,16 +58,14 @@ export async function signInWithPassword(
 
 export async function signUpWithPassword(
   client: SupabaseBrowserClient,
-  input: { email: string; password: string; firstName: string },
+  input: { email: string; password: string },
 ) {
   const result = await client.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: {
-      // NB (parité mobile) : le mobile ne collecte pas de prénom à
-      // l'inscription (fait à l'onboarding). Le web le conserve pour l'instant
-      // — réconciliation prévue au Jalon 5.
-      data: { first_name: input.firstName.trim() },
+      // Parité mobile : aucune donnée de profil à l'inscription. Le prénom et
+      // le nom sont recueillis à l'onboarding (étape identité / KYC).
       emailRedirectTo: redirectTo(
         `/auth/callback?next=${ROUTES.authResolving}`,
       ),

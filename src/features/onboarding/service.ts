@@ -36,6 +36,35 @@ export async function fetchCountries(client: Client): Promise<CountryOption[]> {
   return data ?? [];
 }
 
+export interface LifestyleOptionRow {
+  category: string;
+  value: string;
+  label: string;
+}
+
+/**
+ * Libellés de style de vie gérés au dashboard (`lifestyle_options`) — port de
+ * `referenceDataService.fetchLifestyleOptions`. Fusionnés côté client avec les
+ * valeurs de repli (voir `useLifestyleCategories`) pour ne jamais bloquer le
+ * parcours si le catalogue est vide ou indisponible.
+ */
+export async function fetchLifestyleOptions(
+  client: Client,
+): Promise<LifestyleOptionRow[]> {
+  const { data, error } = await client
+    .from("lifestyle_options")
+    .select("category, value, label, sort_order")
+    .eq("is_active", true)
+    .not("value", "is", null)
+    .order("sort_order");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    category: row.category as string,
+    value: row.value as string,
+    label: row.label as string,
+  }));
+}
+
 /**
  * Écrit le profil final et marque l'onboarding terminé. `profile_completed`
  * est recalculé par trigger (bio + 3 intérêts + 2 photos + lifestyle…) —
@@ -46,14 +75,28 @@ export async function persistOnboarding(
   userId: string,
   data: OnboardingData,
 ): Promise<void> {
+  const hasCoords = data.latitude !== null && data.longitude !== null;
   const { error: profileError } = await client
     .from("profiles")
     .update({
+      // Identité (KYC) — le prénom est visible, le nom reste privé. Le nom
+      // vide est stocké NULL (parité `completeOnboarding` mobile).
+      first_name: data.firstName.trim(),
+      last_name: data.lastName.trim() || null,
       gender: data.gender,
       looking_for: data.lookingFor,
       birth_date: data.birthDate,
       country: data.country,
       city: data.city,
+      // Coordonnées : alimentent l'ordonnancement par proximité de la
+      // découverte (port de `locationService.captureAndSaveLocation`).
+      ...(hasCoords
+        ? {
+            latitude: data.latitude,
+            longitude: data.longitude,
+            location_updated_at: new Date().toISOString(),
+          }
+        : {}),
       bio: data.bio.trim(),
       smoking: data.smoking,
       drinking: data.drinking,

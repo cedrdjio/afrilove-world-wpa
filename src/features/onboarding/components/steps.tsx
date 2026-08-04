@@ -4,21 +4,17 @@ import { useState } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Spinner } from "@/components/ui/spinner";
 import {
-  CHILDREN_OPTIONS,
-  DRINKING_OPTIONS,
   GENDER_OPTIONS,
-  GYM_OPTIONS,
   LOOKING_FOR_OPTIONS,
   type Option,
-  PETS_OPTIONS,
-  SMOKING_OPTIONS,
 } from "@/features/onboarding/config";
+import { type InterestOption } from "@/features/onboarding/service";
+import { useLifestyleCategories } from "@/features/onboarding/hooks/use-lifestyle-categories";
 import {
-  type CountryOption,
-  type InterestOption,
-} from "@/features/onboarding/service";
-import {
+  MAX_BIO,
+  MIN_BIO,
   MIN_INTERESTS,
   type OnboardingData,
 } from "@/features/onboarding/types";
@@ -111,83 +107,42 @@ export function BirthDateStep({ data, patch }: StepProps) {
         </p>
       ) : (
         <p className="text-muted-foreground text-sm">
-          Vous devez avoir au moins 18 ans.
+          Vous devez avoir au moins 18 ans pour utiliser AfriLove World.
         </p>
       )}
     </div>
   );
 }
 
-export function LocationStep({
-  data,
-  patch,
-  countries,
-}: StepProps & { countries: CountryOption[] }) {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="country" className="text-sm font-semibold">
-          Pays
-        </label>
-        <select
-          id="country"
-          value={data.country ?? ""}
-          onChange={(e) => patch({ country: e.target.value || null })}
-          className="border-border bg-muted/40 text-foreground focus-visible:border-primary focus-visible:ring-ring/40 h-12 w-full rounded-[var(--radius-md)] border px-4 text-[0.95rem] focus-visible:ring-2 focus-visible:outline-none"
-        >
-          <option value="">Sélectionner…</option>
-          {countries.map((c) => (
-            <option key={c.key} value={c.label}>
-              {c.emoji ? `${c.emoji}  ` : ""}
-              {c.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="city" className="text-sm font-semibold">
-          Ville
-        </label>
-        <Input
-          id="city"
-          value={data.city ?? ""}
-          placeholder="Votre ville"
-          onChange={(e) => patch({ city: e.target.value || null })}
-        />
-      </div>
-    </div>
-  );
-}
-
-const BIO_MAX = 500;
 export function BioStep({ data, patch }: StepProps) {
+  const length = data.bio.trim().length;
   return (
     <div className="flex flex-col gap-2">
       <Textarea
         rows={6}
-        maxLength={BIO_MAX}
+        maxLength={MAX_BIO}
         value={data.bio}
-        placeholder="Parlez de vous, de ce que vous aimez, de ce que vous recherchez…"
-        onChange={(e) => patch({ bio: e.target.value })}
+        placeholder="Passionné(e) de voyages, toujours partant(e) pour un bon plat et de belles conversations…"
+        onChange={(e) => patch({ bio: e.target.value.slice(0, MAX_BIO) })}
         aria-label="Bio"
       />
       <p className="text-muted-foreground self-end text-xs tabular-nums">
-        {data.bio.length}/{BIO_MAX}
+        {length}/{MAX_BIO} · min. {MIN_BIO}
       </p>
     </div>
   );
 }
 
-function LifestyleGroup<T extends string>({
+function LifestyleGroup({
   title,
   options,
   value,
   onPick,
 }: {
   title: string;
-  options: Option<T>[];
-  value: T | null;
-  onPick: (v: T) => void;
+  options: { value: string; label: string }[];
+  value: string | null;
+  onPick: (v: string) => void;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -198,7 +153,6 @@ function LifestyleGroup<T extends string>({
             key={o.value}
             compact
             label={o.label}
-            icon={o.icon}
             selected={value === o.value}
             onSelect={() => onPick(o.value)}
           />
@@ -209,38 +163,31 @@ function LifestyleGroup<T extends string>({
 }
 
 export function LifestyleStep({ data, patch }: StepProps) {
+  // Options chargées depuis `lifestyle_options` (gérées au dashboard) avec
+  // repli local — port de `LifestyleScreen` + `useLifestyleCategories`.
+  const { categories, isLoading } = useLifestyleCategories();
+
+  if (isLoading) {
+    return (
+      <div className="grid place-items-center py-16">
+        <Spinner />
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
-      <LifestyleGroup
-        title="Tabac"
-        options={SMOKING_OPTIONS}
-        value={data.smoking}
-        onPick={(smoking) => patch({ smoking })}
-      />
-      <LifestyleGroup
-        title="Alcool"
-        options={DRINKING_OPTIONS}
-        value={data.drinking}
-        onPick={(drinking) => patch({ drinking })}
-      />
-      <LifestyleGroup
-        title="Sport"
-        options={GYM_OPTIONS}
-        value={data.gymHabit}
-        onPick={(gymHabit) => patch({ gymHabit })}
-      />
-      <LifestyleGroup
-        title="Animaux"
-        options={PETS_OPTIONS}
-        value={data.hasPets}
-        onPick={(hasPets) => patch({ hasPets })}
-      />
-      <LifestyleGroup
-        title="Enfants"
-        options={CHILDREN_OPTIONS}
-        value={data.wantsChildren}
-        onPick={(wantsChildren) => patch({ wantsChildren })}
-      />
+      {categories.map((category) => (
+        <LifestyleGroup
+          key={category.key}
+          title={category.label}
+          options={category.options}
+          value={data[category.key]}
+          onPick={(value) =>
+            patch({ [category.key]: value } as Partial<OnboardingData>)
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -277,41 +224,6 @@ export function InterestsStep({
           />
         ))}
       </div>
-    </div>
-  );
-}
-
-export function ReviewStep({ data }: StepProps) {
-  const rows: [string, string][] = [
-    [
-      "Je suis",
-      GENDER_OPTIONS.find((o) => o.value === data.gender)?.label ?? "—",
-    ],
-    [
-      "Je recherche",
-      LOOKING_FOR_OPTIONS.find((o) => o.value === data.lookingFor)?.label ??
-        "—",
-    ],
-    [
-      "Localisation",
-      [data.city, data.country].filter(Boolean).join(", ") || "—",
-    ],
-    ["Centres d’intérêt", `${data.interestIds.length} sélectionnés`],
-  ];
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="border-border bg-card divide-border divide-y rounded-[var(--radius-lg)] border">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between px-4 py-3">
-            <span className="text-muted-foreground text-sm">{k}</span>
-            <span className="text-foreground text-sm font-semibold">{v}</span>
-          </div>
-        ))}
-      </div>
-      <p className="text-muted-foreground text-sm leading-relaxed">
-        Vous pourrez tout modifier depuis votre profil. Ajoutez vos photos à
-        l’étape suivante pour apparaître dans la découverte.
-      </p>
     </div>
   );
 }

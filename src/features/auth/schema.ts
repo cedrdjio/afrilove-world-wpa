@@ -33,13 +33,11 @@ export const loginSchema = z.object({
 });
 export type LoginValues = z.infer<typeof loginSchema>;
 
+// Parité mobile : l'inscription ne collecte QUE e-mail + mot de passe. Le
+// prénom (et le nom) sont recueillis à l'onboarding (étape identité / KYC),
+// pas ici — voir `NameStep`.
 export const registerSchema = z
   .object({
-    firstName: z
-      .string()
-      .trim()
-      .min(2, "Au moins 2 caractères.")
-      .max(40, "40 caractères maximum."),
     email,
     password,
     confirmPassword: z.string().min(1, "Confirmez votre mot de passe."),

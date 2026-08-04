@@ -33,6 +33,10 @@ export const useOnboardingStore = create<OnboardingState>()(
       setStep: (step) => set({ step }),
       clear: () => set({ ownerId: null, data: EMPTY_ONBOARDING, step: 0 }),
     }),
-    { name: "afl-onboarding-draft" },
+    // v2 : le brouillon a gagné des champs (prénom/nom, coordonnées, photos).
+    // Nouvelle clé pour ne pas réhydrater un ancien brouillon à l'ancien
+    // format (qui écraserait les valeurs par défaut et laisserait des champs
+    // indéfinis).
+    { name: "afl-onboarding-draft-v2" },
   ),
 );

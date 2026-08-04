@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~28 %**
-_(fondations + design system + navigation/shell + authentification posés ; onboarding partiel ; cœur métier à migrer)_
+**Avancement global : ~34 %**
+_(fondations + design system + navigation/shell + authentification + onboarding complets ; cœur métier — profil, recherche, découverte, messagerie — à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 4 (Authentification) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 5 (Onboarding) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -23,7 +23,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 4 (Authentification) livré.
 | 2 | Design System (glass lavande) | ✅ terminé |
 | 3 | Navigation & Shell | ✅ terminé |
 | 4 | Authentification | ✅ terminé |
-| 5 | Onboarding (12 étapes) | 🟡 partiel |
+| 5 | Onboarding (carousel → finish) | ✅ terminé |
 | 6 | Profil (mon profil / édition / public) | ❌ à faire |
 | 7 | Recherche avancée | ❌ à faire |
 | 8 | Découverte & Matching | ❌ à faire |
@@ -49,11 +49,14 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
 - [ ] Deep-link resolving / success
 
 ### Onboarding
-- [ ] Parité 12 étapes (name→finish)
-- [ ] Permission GPS
-- [ ] Permission notifications
-- [ ] Upload photos (Edge upload-photo)
-- [ ] Carousel + finish + complétion
+- [x] Parité des étapes (carousel → name → gender → birthday → looking-for →
+  interests → bio → photos → lifestyle → permissions → finish)
+- [x] Étape identité (prénom + nom / KYC), réconciliation register→onboarding
+- [x] Permission GPS (géoloc navigateur → coordonnées de proximité)
+- [x] Permission notifications (invite navigateur ; abonnement Web Push → J10)
+- [x] Upload photos (Edge `upload-photo`, min 2 / max 6)
+- [x] Lifestyle depuis `lifestyle_options` (DB) + repli local
+- [x] Carousel intro + écran de fin + persistance du brouillon → resolving
 
 ### Profil
 - [ ] Mon profil (partiel : lecture seule)
@@ -325,7 +328,88 @@ avec le mobile, en réutilisant les formulaires web existants (RHF + `Field`).
 **Régressions** : aucune. Les flux existants restent valides ; ajout de l'OTP,
 du sas de résolution, du verrou de récupération et de l'affichage d'erreur inline.
 
-➡️ **Prochaine étape : Jalon 5 — Onboarding** (12 étapes : name/birthday/gender/
-looking-for/permissions/interests/bio/lifestyle/upload-photos/finish, garde du
-groupe, persistance du brouillon, réconciliation du prénom register→onboarding).
+---
+
+## Journal — Jalon 5 : Onboarding
+
+**Objectif** : parité stricte du parcours d'onboarding mobile (source de vérité).
+Le web avait un wizard mono-page partiel (9 étapes) ; on l'a amené à la parité
+complète avec les **13 écrans** mobiles, dans le **même ordre UX** : `carousel →
+name(1/8) → gender(2/8) → birthday(3/8) → looking-for(4/8) → interests(5/8) →
+bio(6/8) → upload-photos(7/8) → lifestyle(8/8) → location-permission →
+notification-permission → finish → resolving`.
+
+**Analyse d'écarts (mobile = vérité → action)**
+
+| # | Domaine | Mobile | Web (avant) | Comblé |
+| --- | --- | --- | --- | --- |
+| 1 | Identité | prénom **+ nom** (KYC), ≥2 | non collecté (prénom au register) | étape `NameStep` + réconciliation |
+| 2 | Genre | +**non-binaire** | femme/homme | ajouté |
+| 3 | Naissance | âge≥18 | âge≥18 | ✓ (input date web) |
+| 4 | Recherche | +descriptions | présent | descriptions alignées |
+| 5 | Localisation | permission géoloc (lat/lng), **skippable** | country/city **bloquant** | écran permission géoloc + saisie manuelle facultative, non bloquant |
+| 6 | Intérêts | DB, min 3 | DB, min 3 | ✓ |
+| 7 | Bio | min **20** / max **300** | min 1 / max 500 | bornes corrigées |
+| 8 | Lifestyle | 5 cat. **DB** + repli | statiques | `fetchLifestyleOptions` + repli |
+| 9 | Photos | min **2** / max 6 | optionnel | min 2 bloquant + persistance brouillon |
+| 10 | Permissions | localisation + **notifications** | aucune | 2 écrans (push réel → J10) |
+| 11 | Carousel | 3 slides | aucun | slides intro (visuels adaptés charte) |
+| 12 | Finish | écrit prénom+nom+coords → **resolving** | persist sans nom → discover | enrichi + route → resolving |
+
+**Fichiers créés**
+- `features/onboarding/components/name-step.tsx` — identité (prénom+nom),
+  préremplissage via `user_metadata`, note KYC (port `NameScreen`).
+- `features/onboarding/components/permission-step.tsx` — écran de permission
+  réutilisable (port `PermissionScreen`).
+- `features/onboarding/components/location-step.tsx` — permission géoloc
+  navigateur (coordonnées de proximité) + saisie pays/ville facultative.
+- `features/onboarding/components/notification-step.tsx` — invite de
+  notification navigateur (abonnement Web Push déféré au J10).
+- `features/onboarding/components/carousel-step.tsx` — carousel d'intro.
+- `features/onboarding/components/finish-step.tsx` — écran de fin (célébration,
+  erreur inline + réessai).
+- `features/onboarding/hooks/use-lifestyle-categories.ts` — fusion
+  `lifestyle_options` (DB) + repli local.
+
+**Fichiers modifiés**
+- `features/onboarding/types.ts` — `firstName`/`lastName`, `latitude`/`longitude`,
+  `photos` ; genre +`non-binaire` ; constantes de validation (MIN_NAME/MIN_AGE/
+  MIN_BIO=20/MAX_BIO=300/MIN_PHOTOS=2/MAX_PHOTOS=6).
+- `features/onboarding/config.ts` — genre non-binaire + descriptions ;
+  `LIFESTYLE_CATEGORIES` (mapping `dbCategory`).
+- `features/onboarding/service.ts` — `fetchLifestyleOptions` ; `persistOnboarding`
+  écrit prénom/nom + coordonnées (`location_updated_at`).
+- `features/onboarding/store.ts` — clé de persistance `…-v2` (nouveau format
+  de brouillon).
+- `features/onboarding/components/steps.tsx` — bio 20/300 ; lifestyle piloté DB ;
+  retrait de Review/Location (remplacés).
+- `features/onboarding/components/photos-step.tsx` — photos dans le brouillon
+  persisté (condition min-2 fiable, survie au refresh), badge « Principal ».
+- `features/onboarding/components/onboarding-wizard.tsx` — registre d'étapes
+  fidèle (carousel/contenu/permission/finish), progression sur les 8 étapes de
+  contenu, fin → `persistOnboarding` → `/auth/resolving`.
+- `features/auth/schema.ts`, `app/auth/register/page.tsx`, `features/auth/service.ts`
+  — **réconciliation** : le prénom n'est plus collecté à l'inscription (parité
+  mobile), il l'est à l'onboarding (`NameStep`).
+
+**Décisions de périmètre**
+- **Architecture wizard** : on conserve le wizard mono-page (déjà choisi côté web,
+  motif PWA adapté à un parcours séquentiel) plutôt que route-par-étape ; tous les
+  écrans/validations/données/animations mobiles sont préservés.
+- **Reverse-geocoding** : le mobile déduit ville/pays des coordonnées ; côté web
+  on capture les coordonnées (proximité) via l'API Geolocation et on laisse la
+  saisie manuelle facultative du lieu (plus fiable, pas de dépendance externe /
+  risque CSP). Ville/pays éditables au profil (J6).
+- **Notifications** : l'écran sollicite la permission navigateur ; l'abonnement
+  Web Push (VAPID + SW) est bien du ressort du **Jalon 10** (décision J0).
+- **Carousel** : les visuels plein écran natifs (photos) sont remplacés par des
+  cartes au dégradé signature ; titres/descriptions identiques.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (25 routes).
+**Régressions** : aucune. L'onboarding partiel devient complet ; l'inscription
+perd son champ prénom (déplacé, pas supprimé) sans casser le flux auth (J4).
+
+➡️ **Prochaine étape : Jalon 6 — Profil** (mon profil, édition, profil public
+`/profile/[id]` + galerie, gestion des photos, langues/religion/éducation…).
 En attente de feu vert.

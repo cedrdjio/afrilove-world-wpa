@@ -34,7 +34,6 @@ export default function RegisterPage() {
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      firstName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -87,20 +86,6 @@ export default function RegisterPage() {
         noValidate
         className="flex flex-1 flex-col gap-5"
       >
-        <Field
-          label="Prénom"
-          htmlFor="firstName"
-          error={errors.firstName?.message}
-        >
-          <Input
-            id="firstName"
-            autoComplete="given-name"
-            placeholder="Votre prénom"
-            invalid={!!errors.firstName}
-            {...register("firstName")}
-          />
-        </Field>
-
         <Field
           label="Adresse e-mail"
           htmlFor="email"
