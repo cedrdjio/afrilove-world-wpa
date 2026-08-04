@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~45 %**
-_(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée complets ; cœur métier — découverte, messagerie — à migrer)_
+**Avancement global : ~52 %**
+_(fondations + design system + navigation/shell + authentification + onboarding + profil + recherche avancée + découverte/matching complets ; messagerie, notifications, premium à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 7 (Recherche avancée) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 8 (Découverte & Matching) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -26,7 +26,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 7 (Recherche avancée) livré.
 | 5 | Onboarding (carousel → finish) | ✅ terminé |
 | 6 | Profil (mon profil / édition / public) | ✅ terminé |
 | 7 | Recherche avancée | ✅ terminé |
-| 8 | Découverte & Matching | ❌ à faire |
+| 8 | Découverte & Matching | ✅ terminé |
 | 9 | Messagerie temps réel | ❌ à faire |
 | 10 | Notifications | ❌ à faire |
 | 11 | Paiements (Premium / CamerPay) | ❌ à faire |
@@ -70,14 +70,15 @@ Légende : ✅ terminé & vérifié · 🟡 partiel · ❌ à faire · ⏳ déci
   lifestyle)
 
 ### Découverte & Matching
-- [ ] Deck de swipe (`search_profiles`)
-- [ ] Filtres discover + compteur
-- [ ] Likes / passes / superlikes
-- [ ] Match (trigger DB) + célébration
-- [ ] Favoris / likers (premium)
-- [ ] Limite likes quotidienne
-- [ ] Recherche texte libre
-- [ ] Localisation / distance / diaspora matching
+- [x] Deck de swipe (`search_profiles`, `deckStore` pagination + préchargement)
+- [x] Filtres discover (scope diaspora/pays/partout, âge, vérifié) + compteur « Voir N »
+- [x] Likes / passes (glisser framer-motion + boutons) ; super-like → J11
+- [x] Match (trigger DB `after_swipe_sync_match`) + célébration
+- [x] Favoris (signets, `profile_favorites`) + « Qui vous a aimé » (likers premium)
+- [x] Limite quotidienne (écran `/discover/like-limit`, reset minuit)
+- [x] Localisation / distance / diaspora (heartbeat + géoloc navigateur, `search_profiles`)
+- [~] Recherche texte libre (`searchByText` livré au service ; UI recherche matchs → J9)
+- [~] Liste des matchs (conversations) → J9 (messagerie temps réel)
 
 ### Recherche avancée
 - [x] Hub + 11 filtres (age, city, country, distance, education, height, languages, lifestyle, profession, religion, verified)
@@ -508,7 +509,59 @@ mémoire, comme sur mobile). L'exécution de la recherche est déléguée à J8.
 **Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
 `pnpm build` ✅ (12 routes `/search` prérendues). **Régressions** : aucune.
 
-➡️ **Prochaine étape : Jalon 8 — Découverte & Matching** (deck de swipe,
-`search_profiles` + `filtersStore`, likes/passes/superlikes, match & célébration,
-limite quotidienne, application effective des filtres du Jalon 7). En attente de
-feu vert.
+➡️ **Jalon 8 livré** (voir ci-dessous).
+
+## Journal — Jalon 8 : Découverte & Matching
+
+**Analyse (source de vérité `afrolove-world-mob`)** : lecture complète du module
+`discovery` (deckStore, filtersStore, discoveryService, useDiscovery, SwipeCard,
+ActionButtons, SwipeScreen, FiltersScreen, NoProfiles, DailyLikeLimit,
+PremiumLocked) et `matches` (MatchCelebration, MatchList, MatchesSearch), plus
+les dépendances (favoritesService, premiumService entitlements/likers,
+locationService, presenceStore, lastSeen). Le backend (`search_profiles`,
+`count_search_profiles`, `get_discovery_countries`, tables `swipes`/`matches`
+avec trigger `after_swipe_sync_match`, RPC favoris/entitlements/likers) est
+partagé — migration purement front.
+
+**Découpage jalons** (aligné sur PHASE2) : J8 = découverte + swipe + match +
+célébration + **favoris/likers** + limite quotidienne + localisation. La **liste
+des conversations** (un match surface via `get_my_conversations`) et la présence
+temps réel relèvent du **Jalon 9** ; le déverrouillage Premium (forfaits,
+CamerPay, super-likes) du **Jalon 11** ; le centre de notifications du **Jalon 10**.
+
+**Livré** :
+- `features/discovery/` — `types`, `service` (searchProfiles / countProfiles /
+  fetchCountries / swipe / searchByText), stores `deck-store` (pagination
+  intelligente + préchargement navigateur) et `filters-store`, hooks
+  (`useDiscoveryCount`, `useDiscoveryCountries`, `useSwipe`), composants
+  `SwipeCard` (**glisser framer-motion** + rotation + voiles LIKE/NOPE, sortie
+  commandée par les boutons) et `ActionButtons`.
+- `features/favorites/` — service + hooks (signets, limite 10, invalidations).
+- `features/premium/` — **lecture** entitlements + likers (compteur de swipes,
+  limites, « qui vous a aimé ») ; forfaits/paiement → J11.
+- `features/location/` — heartbeat `last_active_at` (Page Visibility API) +
+  capture géoloc navigateur, monté via `AppPresence` dans le shell `(app)`.
+- `lib/presence.ts` — `isRecentlyOnline` + `formatLastSeen` (partagé J8/J9).
+- Écrans : `/discover` (deck complet : onglets Pour toi/À proximité, compteur de
+  swipes, chargement/erreur/vide, barre d'actions flottante), `/discover/filters`
+  (scope diaspora/pays/partout + pays live + âge + vérifié + « Voir N profils »),
+  `/discover/like-limit` (reset minuit), `/matches` (onglets Matchs/Favoris :
+  favoris fonctionnels + teaser/liste likers), `/matches/celebration`.
+
+**Écarts assumés (fidèles au mobile / séquencés)** : présence temps réel via
+heartbeat `isRecentlyOnline` (canal Realtime `online-members` → J9) ; CTA Premium
+et notifications → toasts « bientôt » (J10/J11) plutôt que 404 ; liste des
+conversations dans l'onglet Matchs et recherche de matchs → J9 ; célébration
+« Dis bonjour » ouvre `/messages` (repli exact du mobile sans conversation en
+cache). Le glisser web est un ajout charté (le mobile est tap-only) demandé par
+le plan (« SwipeCard framer-motion drag »).
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (53 routes, dont `/discover`, `/discover/filters`,
+`/discover/like-limit`, `/matches`, `/matches/celebration`). **Régressions** :
+aucune — les placeholders `/discover` et `/matches` du Jalon 3 sont remplacés.
+
+➡️ **Prochaine étape : Jalon 9 — Messagerie (temps réel)** (liste conversations
+`get_my_conversations`, chat `/chat/[id]` Realtime, envoi/lecture/non-lus,
+présence `online-members`, recherche de matchs, célébration → vrai chat). En
+attente de feu vert.

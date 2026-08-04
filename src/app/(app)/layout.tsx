@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { RequireCompletedOnboarding } from "@/components/guards/require-completed-onboarding";
+import { AppPresence } from "@/features/location/app-presence";
 
 /**
  * Shell applicatif authentifié — équivalent du groupe `(tabs)` mobile.
@@ -16,6 +17,7 @@ import { RequireCompletedOnboarding } from "@/components/guards/require-complete
 export default function AppShellLayout({ children }: { children: ReactNode }) {
   return (
     <RequireCompletedOnboarding>
+      <AppPresence />
       <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-28">
         {children}
       </div>
