@@ -35,7 +35,6 @@ export const ROUTES = {
   matches: "/matches",
   matchCelebration: "/matches/celebration",
   matchesSearch: "/matches/search",
-  likes: "/likes", // alias historique du web — réconcilié avec /matches au Jalon 3
   messages: "/messages",
   profile: "/profile",
 
@@ -83,6 +82,15 @@ export const ROUTES = {
   // Modération / comptes
   blockedUsers: "/blocked-users",
   reportsConfirmation: "/reports/confirmation",
+
+  // États système (miroir des écrans /system/* du mobile)
+  systemAccountStatus: "/system/account-status",
+  systemServerError: "/system/server-error",
+  systemMaintenance: "/system/maintenance",
+  systemEmpty: "/system/empty",
+  systemLoading: "/system/loading",
+  systemNoInternet: "/system/no-internet",
+  systemOffline: "/system/offline",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -109,7 +117,6 @@ export const PROTECTED_PREFIXES = [
   "/onboarding",
   "/discover",
   "/matches",
-  "/likes",
   "/messages",
   "/profile",
   "/edit-profile",

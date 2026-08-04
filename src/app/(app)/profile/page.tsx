@@ -1,13 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { m } from "framer-motion";
 import { BadgeCheck, MapPin, Pencil } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { Spinner } from "@/components/ui/spinner";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -17,32 +12,20 @@ function ageFrom(birthDate: string | null): number | null {
 }
 
 /**
- * Fiche profil du membre (Sprint 01, lecture seule). L'édition détaillée et la
- * gestion des photos arriveront avec l'app ; ici on affiche l'essentiel.
+ * Onglet Profil (Jalon 3, lecture seule). La garde du shell `(app)` garantit
+ * un profil complet ; l'édition détaillée et la galerie photos arrivent au
+ * Jalon 6.
  */
 export default function ProfilePage() {
-  const router = useRouter();
-  const { user, profile, isLoading } = useAuth();
+  const { profile } = useAuth();
 
-  useEffect(() => {
-    if (!isLoading && profile && !profile.onboarding_completed) {
-      router.replace(ROUTES.onboarding);
-    }
-  }, [isLoading, profile, router]);
-
-  if (isLoading || !user || !profile || !profile.onboarding_completed) {
-    return (
-      <div className="grid min-h-dvh place-items-center">
-        <Spinner />
-      </div>
-    );
-  }
+  if (!profile) return null;
 
   const age = ageFrom(profile.birth_date);
   const location = [profile.city, profile.country].filter(Boolean).join(", ");
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col pb-10">
+    <div className="flex flex-1 flex-col">
       {/* En-tête visuel : avatar sur dégradé signature. */}
       <div className="gradient-signature relative h-44 w-full">
         <div className="absolute inset-x-0 -bottom-12 flex justify-center">
@@ -95,26 +78,16 @@ export default function ProfilePage() {
             {profile.bio}
           </p>
         ) : null}
-
-        {!profile.profile_completed ? (
-          <div className="border-border bg-card mt-6 w-full rounded-[var(--radius-lg)] border p-4 text-left">
-            <p className="text-foreground text-sm font-semibold">
-              Complétez votre profil
-            </p>
-            <p className="text-muted-foreground mt-1 text-xs leading-relaxed">
-              Ajoutez au moins 2 photos pour apparaître dans la découverte.
-            </p>
-          </div>
-        ) : null}
       </m.div>
 
-      <div className="mt-auto flex flex-col gap-3 px-6 pt-8">
-        <Button size="lg" block asChild>
-          <Link href={ROUTES.discover}>Retour à l’accueil</Link>
-        </Button>
+      <div className="mt-8 px-6">
         <p className="text-muted-foreground inline-flex items-center justify-center gap-1.5 text-center text-xs">
           <Pencil className="size-3.5" aria-hidden />
-          L’édition du profil arrive prochainement.
+          L’édition du profil arrive au prochain jalon (
+          <a href={ROUTES.editProfile} className="text-primary underline">
+            édition
+          </a>
+          ).
         </p>
       </div>
     </div>

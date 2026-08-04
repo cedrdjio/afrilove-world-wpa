@@ -4,10 +4,10 @@
 > Source de vérité : `afrolove-world-mob` (Expo). Cible : ce repo (Next.js).
 > Détails : `docs/migration/PHASE1_AUDIT.md` · `docs/migration/PHASE2_MIGRATION_PLAN.md`.
 
-**Avancement global : ~16 %**
-_(fondations + design system posés ; auth + onboarding partiels ; cœur métier à migrer)_
+**Avancement global : ~22 %**
+_(fondations + design system + navigation/shell posés ; auth + onboarding partiels ; cœur métier à migrer)_
 
-Dernière mise à jour : 2026-08-04 — Jalon 2 (Design System) livré.
+Dernière mise à jour : 2026-08-04 — Jalon 3 (Navigation & Shell) livré.
 
 ### Décisions du Jalon 0 (validées)
 - **Admin** : reporté — décision tranchée avant le Jalon 12 (hors périmètre pour l'instant).
@@ -21,7 +21,7 @@ Dernière mise à jour : 2026-08-04 — Jalon 2 (Design System) livré.
 | 0 | Cadrage & décisions (admin, web push, CamerPay web) | ✅ validé |
 | 1 | Architecture & fondations | ✅ terminé |
 | 2 | Design System (glass lavande) | ✅ terminé |
-| 3 | Navigation & Shell | 🟡 partiel |
+| 3 | Navigation & Shell | ✅ terminé |
 | 4 | Authentification | 🟡 partiel |
 | 5 | Onboarding (12 étapes) | 🟡 partiel |
 | 6 | Profil (mon profil / édition / public) | ❌ à faire |
@@ -165,7 +165,7 @@ absence de journal client, clés de cache éparses, carte de routes incomplète
 `/likes` conservé le temps de la réconciliation nav au Jalon 3).
 
 **Note de suivi** : réconcilier `/likes` (web) ↔ `/matches` (mobile) au Jalon 3
-lors de la refonte du `BottomNav`.
+lors de la refonte du `BottomNav`. → ✅ **fait au Jalon 3** (alias `/likes` supprimé).
 
 ### 2026-08-04 — Jalon 2 : Design System (glass lavande) ✅
 **Analyse d'écart** : les tokens (couleurs `#9B7EDE`/violets, fonts Jakarta+Nunito,
@@ -203,6 +203,68 @@ fidèle des composants manquants, charte respectée à l'identique.
   conservé plutôt qu'un doublon — restyle si nécessaire au Jalon 12.
 - **BrandLogo** : couvert par `components/brand/logo.tsx` existant.
 
-➡️ **Prochaine étape : Jalon 3 — Navigation & Shell** (app shell, BottomNav
-réconcilié `/matches`, groupes de routes avec gardes, états système).
-En attente de feu vert avant de démarrer le Jalon 3.
+### 2026-08-04 — Jalon 3 : Navigation & Shell ✅
+**Analyse d'écart (Expo vs Next)** :
+
+| Élément | Expo | Next (avant) | Action J3 |
+| --- | --- | --- | --- |
+| Groupes de routes | `(auth)`/`(onboarding)`/`(tabs)` avec layouts-gardes | routes plates, garde seulement dans le proxy serveur | groupe `(app)` + layouts-gardes client |
+| Barre d'onglets | `BottomNavBar` verre flottant, 4 tabs animés | scaffolding sur `/likes` | port fidèle réconcilié `/matches` |
+| Garde app | `RequireCompletedOnboarding` | logique dupliquée dans chaque page | centralisée dans le shell |
+| Garde onboarding | `RequireAuthForOnboarding` | absente | portée (layout onboarding) |
+| Route initiale | `useInitialRoute` (recovery/statut/onboarding/profil/discover) | proxy partiel | ordre repris dans la garde shell |
+| États système | 7 écrans `/system/*` | seul `/offline` | `SystemStateScreen` + `/system/[state]` + `/system/account-status` |
+| not-found | `+not-found` → `/` | absent | `not-found.tsx` → `/` |
+| Chargement plein écran | `FullScreenLoader` (Lottie) | absent | port framer-motion |
+
+**Fichiers créés**
+- `components/layout/bottom-nav.tsx` — **refondu** : port de `BottomNavBar`
+  (4 onglets Découvrir/Matchs/Messages/Profil, cœur rempli sur Matchs, icône
+  qui se soulève + pastille active, haptique), réconcilié sur `/matches`.
+- `components/guards/require-completed-onboarding.tsx` — port du garde `(tabs)` :
+  session → statut compte → onboarding → profil (ordre du mobile).
+- `components/guards/require-auth-for-onboarding.tsx` — port du garde `(onboarding)`.
+- `components/feedback/full-screen-loader.tsx` — chargement de marque (loader + logo).
+- `components/feedback/system-state-screen.tsx` — port de `SystemStateScreen`.
+- `app/(app)/layout.tsx` — shell authentifié (garde + `BottomNav` + espace bas).
+- `app/(app)/discover/page.tsx`, `app/(app)/profile/page.tsx` — **déplacés** dans
+  le groupe (URLs `/discover` `/profile` inchangées), allégés (garde centralisée).
+- `app/(app)/matches/page.tsx`, `app/(app)/messages/page.tsx` — onglets placeholder
+  (grille/chat au J8/J9).
+- `app/profile-completion/page.tsx` — cible de la garde (finalisation au J6).
+- `app/system/[state]/page.tsx` — états empty/loading/maintenance/no-internet/offline/server-error.
+- `app/system/account-status/page.tsx` — port de `AccountStatusScreen` (banni vs
+  désactivé, réactivation `account_status='active'`, déconnexion).
+- `app/onboarding/layout.tsx` — layout-garde onboarding.
+- `app/not-found.tsx` — filet de sécurité → `/`.
+
+**Fichiers modifiés**
+- `constants/routes.ts` — **réconciliation `/likes` → `/matches`** (alias supprimé,
+  retiré des `PROTECTED_PREFIXES`) ; ajout des 7 routes `system*`.
+- `components/feedback/index.ts` — exports `FullScreenLoader`, `SystemStateScreen`.
+
+**Répartition des gardes** : le proxy (serveur) protège les routes contre les
+visiteurs anonymes ; les layouts-gardes (client) couvrent ce que seul le client
+sait après lecture du profil (onboarding/profil complets, statut du compte) — pas
+de doublon, division nette.
+
+**Tests réalisés** : `pnpm typecheck` ✅ · `pnpm lint` ✅ (0 erreur) ·
+`pnpm build` ✅ (22 routes, dont `/discover` `/matches` `/messages` `/profile`
+`/profile-completion` `/system/[state]` `/system/account-status` `/_not-found`).
+**Régressions** : aucune. Les pages `/discover` `/profile` conservent leurs URLs ;
+la logique de redirection dupliquée est centralisée dans le shell (comportement
+identique). L'alias `/likes` est retiré partout.
+
+**Notes de parité**
+- **VerificationPromptModal** (rappel « faites-vous vérifier » monté dans `(tabs)`)
+  et les hooks de sync montés dans le layout mobile (`useLocationSync`,
+  `usePushSync`, `useNotificationsRealtime`, `usePresenceSync`) sont **différés**
+  à leurs jalons respectifs (KYC J12, localisation J6, notifications/présence
+  J9/J10) — le point de montage est le shell `(app)`, prêt à les recevoir.
+- **`/offline`** existant (repli Service Worker) conservé en plus de `/system/offline`.
+- **account-status/reactivate** : le mobile passe par `accountService` ; ici l'update
+  `profiles` est inline (le module Settings complet arrive au J12).
+
+➡️ **Prochaine étape : Jalon 4 — Authentification** (welcome, login, register,
+mot de passe oublié/reset, vérification e-mail, deep links de récupération,
+`resolving`/`success`, mapping d'erreurs auth). En attente de feu vert.
