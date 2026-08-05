@@ -125,8 +125,8 @@ const STEPS: StepDef[] = [
   },
   {
     key: "goal",
-    title: "Que recherchez-vous ?",
-    subtitle: "Le type de relation qui vous intéresse.",
+    title: "Quel type de relation ?",
+    subtitle: "Ce que vous espérez trouver ici.",
     valid: (d) => !!d.relationshipGoalId,
   },
   { key: "smoking", title: "Tabac ?", valid: (d) => !!d.smoking },
