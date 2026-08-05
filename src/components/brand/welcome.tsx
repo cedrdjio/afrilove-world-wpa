@@ -115,7 +115,7 @@ export function Welcome() {
         onPointerCancel={resumeSoon}
         onTouchEnd={resumeSoon}
         aria-roledescription="carousel"
-        aria-label="Présentation d'Afrilove World"
+        aria-label="Présentation d'AfriLove World"
         className="flex h-dvh snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
       >
         {SLIDES.map((slide, i) => (
@@ -171,8 +171,8 @@ export function Welcome() {
             height={28}
             className="size-7 object-contain"
           />
-          <span className="font-display text-sm font-extrabold tracking-[0.12em] text-white drop-shadow">
-            AFRILOVE WORLD
+          <span className="font-display text-sm font-extrabold tracking-tight text-white drop-shadow">
+            AfriLove World
           </span>
         </m.div>
         <ThemeToggle className="bg-black/25 text-white ring-1 ring-white/15 backdrop-blur-md" />

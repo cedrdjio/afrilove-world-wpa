@@ -41,7 +41,7 @@ html[data-splash="seen"] #app-splash{display:none!important}
 .af-splash-logo{position:relative;width:128px;height:128px;border-radius:30px;background-image:url("/brand/logo.png");background-size:cover;background-position:center;box-shadow:0 22px 60px -14px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.06);animation:af-splash-float 3.6s ease-in-out .7s infinite}
 .af-splash-logo::after{content:"";position:absolute;inset:-2px;border-radius:32px;padding:2px;background:linear-gradient(140deg,rgba(255,255,255,.55),rgba(155,126,222,0) 45%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
 .af-splash-text{display:flex;flex-direction:column;align-items:center;gap:.25rem}
-.af-splash-title{font-family:var(--font-jakarta),system-ui,sans-serif;font-weight:800;letter-spacing:.16em;font-size:1.05rem;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4);animation:af-splash-rise .6s ease .32s both}
+.af-splash-title{font-family:var(--font-jakarta),system-ui,sans-serif;font-weight:800;letter-spacing:-.01em;font-size:1.15rem;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.4);animation:af-splash-rise .6s ease .32s both}
 .af-splash-tagline{font-family:var(--font-nunito),system-ui,sans-serif;font-size:.82rem;color:rgba(255,255,255,.72);animation:af-splash-rise .6s ease .46s both}
 .af-splash-dots{display:flex;gap:.42rem;margin-top:.55rem}
 .af-splash-dots span{width:7px;height:7px;border-radius:9999px;background:rgba(255,255,255,.9);animation:af-splash-bounce 1.1s ease-in-out infinite}
@@ -142,7 +142,7 @@ export default function RootLayout({
               />
             </div>
             <div className="af-splash-text">
-              <span className="af-splash-title">AFRILOVE WORLD</span>
+              <span className="af-splash-title">AfriLove World</span>
               <span className="af-splash-tagline">
                 L&apos;amour sans frontières
               </span>

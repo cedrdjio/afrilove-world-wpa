@@ -145,7 +145,7 @@ export function PremiumScreen() {
             <Crown className="size-10 fill-white text-white" aria-hidden />
           </m.span>
           <h1 className="font-display mt-4 text-3xl font-extrabold">
-            Afrilove Premium
+            AfriLove Premium
           </h1>
           <p className="mt-2 text-sm text-white/70">Rencontre sans limites</p>
         </div>

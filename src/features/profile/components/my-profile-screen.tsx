@@ -191,7 +191,7 @@ function PremiumBanner() {
       </span>
       <span className="flex-1">
         <span className="font-display block font-extrabold">
-          Afrilove Premium
+          AfriLove Premium
         </span>
         <span className="block text-sm text-white/85">
           Vois qui t&apos;a déjà liké
