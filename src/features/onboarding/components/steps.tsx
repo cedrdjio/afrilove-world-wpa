@@ -680,6 +680,68 @@ export function ChildrenStep({ data, patch }: StepProps) {
   );
 }
 
+/**
+ * Étape « Mode de vie » groupée (parité jalon) : les cinq questions de style
+ * de vie (tabac, alcool, sport, animaux, enfants) sur un seul écran.
+ */
+export function LifestyleStep({ data, patch }: StepProps) {
+  return (
+    <div className="space-y-6">
+      <LifestyleGroup
+        label="Tabac"
+        options={SMOKING_OPTIONS}
+        value={data.smoking}
+        onPick={(smoking) => patch({ smoking })}
+      />
+      <LifestyleGroup
+        label="Alcool"
+        options={DRINKING_OPTIONS}
+        value={data.drinking}
+        onPick={(drinking) => patch({ drinking })}
+      />
+      <LifestyleGroup
+        label="Sport"
+        options={GYM_OPTIONS}
+        value={data.gymHabit}
+        onPick={(gymHabit) => patch({ gymHabit })}
+      />
+      <LifestyleGroup
+        label="Animaux"
+        options={PETS_OPTIONS}
+        value={data.hasPets}
+        onPick={(hasPets) => patch({ hasPets })}
+      />
+      <LifestyleGroup
+        label="Enfants"
+        options={CHILDREN_OPTIONS}
+        value={data.wantsChildren}
+        onPick={(wantsChildren) => patch({ wantsChildren })}
+      />
+    </div>
+  );
+}
+
+function LifestyleGroup<T extends string>({
+  label,
+  options,
+  value,
+  onPick,
+}: {
+  label: string;
+  options: Option<T>[];
+  value: T | null;
+  onPick: (v: T) => void;
+}) {
+  return (
+    <div>
+      <h3 className="text-muted-foreground mb-2.5 text-sm font-bold">
+        {label}
+      </h3>
+      <TileSelect options={options} value={value} onPick={onPick} />
+    </div>
+  );
+}
+
 /* --------------------------------------------------------------------- *
  * Langues
  * --------------------------------------------------------------------- */

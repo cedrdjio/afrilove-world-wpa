@@ -33,8 +33,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       setStep: (step) => set({ step }),
       clear: () => set({ ownerId: null, data: EMPTY_ONBOARDING, step: 0 }),
     }),
-    // Clé v2 : le parcours a été redécoupé (une question par écran), l'ancien
-    // index d'étape n'est plus valide — on repart d'un brouillon propre.
-    { name: "afl-onboarding-draft-v2" },
+    // Clé v3 : le parcours est repassé à 8 écrans groupés (parité jalon) ;
+    // l'ancien index d'étape (jusqu'à 20) serait hors limites — on repart d'un
+    // brouillon propre.
+    { name: "afl-onboarding-draft-v3" },
   ),
 );
