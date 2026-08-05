@@ -6,11 +6,9 @@ import {
   BadgeCheck,
   Bell,
   ChevronRight,
-  Globe,
-  HelpCircle,
   MapPin,
   Moon,
-  ShieldCheck,
+  Pencil,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +55,11 @@ export function SettingsScreen({
 
         <div className="glass overflow-hidden rounded-[var(--radius-lg)]">
           <NavRow
+            icon={Pencil}
+            label="Modifier mon profil"
+            href={ROUTES.editProfile}
+          />
+          <NavRow
             icon={BadgeCheck}
             label="Vérifier mon compte"
             href={ROUTES.verify}
@@ -69,29 +72,8 @@ export function SettingsScreen({
           <ToggleRow icon={Bell} label="Notifications" />
           <NavRow
             icon={MapPin}
-            label="Localisation"
-            value="Paris"
-            href={ROUTES.filters}
-          />
-          <NavRow
-            icon={ShieldCheck}
-            label="Confidentialité"
-            href={ROUTES.settings}
-            last
-          />
-        </div>
-
-        <div className="glass overflow-hidden rounded-[var(--radius-lg)]">
-          <NavRow
-            icon={Globe}
-            label="Langue"
-            value="Français"
-            href={ROUTES.settings}
-          />
-          <NavRow
-            icon={HelpCircle}
-            label="Aide & support"
-            href={ROUTES.settings}
+            label="Ma localisation"
+            href={ROUTES.editProfile}
             last
           />
         </div>

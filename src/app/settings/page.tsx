@@ -1,11 +1,15 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsScreen } from "@/features/settings/components/settings-screen";
 import { DEMO_ME } from "@/features/profiles/data";
+import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { user, profile, isLoading, signOut } = useAuth();
 
   if (isLoading || !user) {
@@ -25,7 +29,9 @@ export default function SettingsPage() {
     <SettingsScreen
       name={name}
       avatar={profile?.avatar_url ?? null}
-      onSignOut={() => void signOut()}
+      onSignOut={() => {
+        void signOut().then(() => router.replace(ROUTES.login));
+      }}
     />
   );
 }

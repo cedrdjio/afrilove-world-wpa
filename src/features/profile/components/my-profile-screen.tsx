@@ -103,7 +103,7 @@ export function MyProfileScreen({ vm }: { vm: ProfileViewModel }) {
           <div className="glass rounded-[var(--radius-lg)] p-4">
             <div className="flex items-center justify-between">
               <h2 className="font-display font-bold">Ma bio</h2>
-              <Link href={ROUTES.photos} aria-label="Modifier ma bio">
+              <Link href={ROUTES.editProfile} aria-label="Modifier ma bio">
                 <Pencil className="text-accent size-4" aria-hidden />
               </Link>
             </div>
@@ -111,6 +111,25 @@ export function MyProfileScreen({ vm }: { vm: ProfileViewModel }) {
               {vm.bio}
             </p>
           </div>
+        </Section>
+
+        <Section>
+          <Link
+            href={ROUTES.editProfile}
+            className="glass flex items-center gap-3.5 rounded-[var(--radius-lg)] p-4 active:scale-[0.99]"
+          >
+            <span className="bg-accent/15 grid size-11 place-items-center rounded-[var(--radius-sm)]">
+              <Pencil className="text-primary size-5" aria-hidden />
+            </span>
+            <span className="flex-1">
+              <span className="font-display block font-bold">
+                Modifier mon profil
+              </span>
+              <span className="text-muted-foreground block text-sm">
+                Bio, infos, style de vie, centres d&apos;intérêt
+              </span>
+            </span>
+          </Link>
         </Section>
 
         <Section>
