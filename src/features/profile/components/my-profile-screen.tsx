@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { m } from "framer-motion";
-import { Bookmark, Pencil, Settings, Sparkles } from "lucide-react";
+import { Bookmark, Crown, Pencil, Settings, Sparkles } from "lucide-react";
 
 import { VerifiedBadge } from "@/components/brand/verified-badge";
 import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
 import { ROUTES } from "@/constants/routes";
+import { useEntitlements } from "@/features/premium/hooks";
 
 export interface ProfileViewModel {
   firstName: string;
@@ -133,28 +134,66 @@ export function MyProfileScreen({ vm }: { vm: ProfileViewModel }) {
         </Section>
 
         <Section>
-          <Link
-            href={ROUTES.premium}
-            className="gradient-signature shadow-brand flex items-center gap-3.5 rounded-[var(--radius-lg)] p-4 text-white active:scale-[0.99]"
-          >
-            <span className="grid size-11 place-items-center rounded-[var(--radius-sm)] bg-white/20">
-              <Sparkles className="size-6 fill-white text-white" aria-hidden />
-            </span>
-            <span className="flex-1">
-              <span className="font-display block font-extrabold">
-                Afrilove Premium
-              </span>
-              <span className="block text-sm text-white/85">
-                Vois qui t&apos;a déjà liké
-              </span>
-            </span>
-            <span className="text-primary font-display rounded-[var(--radius-pill)] bg-white px-4 py-2 text-sm font-bold">
-              Essayer
-            </span>
-          </Link>
+          <PremiumBanner />
         </Section>
       </m.div>
     </div>
+  );
+}
+
+/**
+ * Bannière Premium contextuelle : les abonnés actifs voient leur statut (et la
+ * date d'échéance) au lieu du CTA « Essayer ». On ne propose jamais de souscrire
+ * à quelqu'un qui l'est déjà — jusqu'à la fin de son abonnement.
+ */
+function PremiumBanner() {
+  const { data: ent } = useEntitlements();
+
+  if (ent?.isPremium) {
+    const until = ent.premiumUntil
+      ? new Date(ent.premiumUntil).toLocaleDateString("fr-FR", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : null;
+    return (
+      <div className="gradient-signature shadow-brand flex items-center gap-3.5 rounded-[var(--radius-lg)] p-4 text-white">
+        <span className="grid size-11 place-items-center rounded-[var(--radius-sm)] bg-white/20">
+          <Crown className="size-6 fill-white text-white" aria-hidden />
+        </span>
+        <span className="flex-1">
+          <span className="font-display block font-extrabold">
+            Premium actif{ent.planLabel ? ` · ${ent.planLabel}` : ""}
+          </span>
+          <span className="block text-sm text-white/85">
+            {until ? `Jusqu'au ${until}` : "Abonnement en cours"}
+          </span>
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={ROUTES.premium}
+      className="gradient-signature shadow-brand flex items-center gap-3.5 rounded-[var(--radius-lg)] p-4 text-white active:scale-[0.99]"
+    >
+      <span className="grid size-11 place-items-center rounded-[var(--radius-sm)] bg-white/20">
+        <Sparkles className="size-6 fill-white text-white" aria-hidden />
+      </span>
+      <span className="flex-1">
+        <span className="font-display block font-extrabold">
+          Afrilove Premium
+        </span>
+        <span className="block text-sm text-white/85">
+          Vois qui t&apos;a déjà liké
+        </span>
+      </span>
+      <span className="text-primary font-display rounded-[var(--radius-pill)] bg-white px-4 py-2 text-sm font-bold">
+        Essayer
+      </span>
+    </Link>
   );
 }
 
