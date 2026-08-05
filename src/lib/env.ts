@@ -19,6 +19,43 @@ const PUBLIC_SUPABASE_URL = "https://xhpwmondzarbnzciruis.supabase.co";
 const PUBLIC_SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhocHdtb25kemFyYm56Y2lydWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4NjE3NDcsImV4cCI6MjA5ODQzNzc0N30.UILit6ltV-kdUPMLM5vk4sUu0s3XG7v7kYYdBmTZTQY";
 
+/**
+ * Nettoie une variable d'environnement saisie à la main (Vercel, .env) :
+ * retire les espaces/sauts de ligne d'encadrement, les guillemets copiés par
+ * erreur, et tout blanc résiduel. Piège fréquent : coller un JWT `anon` ou une
+ * URL avec un retour à la ligne — l'en-tête HTTP devient invalide et `fetch`
+ * lève une exception AVANT tout appel réseau (échec silencieux à la connexion).
+ * Aucune des variables ci-dessous ne contient d'espace légitime.
+ */
+function cleanEnv(value: string | undefined): string | undefined {
+  if (value == null) return undefined;
+  let v = value.trim();
+  if (v.length >= 2) {
+    const first = v[0];
+    const last = v[v.length - 1];
+    if ((first === '"' && last === '"') || (first === "'" && last === "'")) {
+      v = v.slice(1, -1);
+    }
+  }
+  return v.replace(/\s+/g, "");
+}
+
+// NB : on référence chaque `process.env.NEXT_PUBLIC_*` explicitement (inlining
+// Next au build), puis on nettoie la valeur.
+const rawEnv = {
+  NEXT_PUBLIC_SUPABASE_URL: cleanEnv(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: cleanEnv(
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  ),
+  NEXT_PUBLIC_APP_URL: cleanEnv(process.env.NEXT_PUBLIC_APP_URL),
+  NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED: cleanEnv(
+    process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED,
+  ),
+  NEXT_PUBLIC_VAPID_PUBLIC_KEY: cleanEnv(
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+  ),
+};
+
 const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url(),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
@@ -35,14 +72,7 @@ const serverSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
 });
 
-const clientParsed = clientSchema.safeParse({
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:
-    process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED,
-  NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-});
+const clientParsed = clientSchema.safeParse(rawEnv);
 
 if (!clientParsed.success) {
   // En dev/prod on veut échouer tôt ; au build sans env on tolère (placeholders).
@@ -65,26 +95,24 @@ const serverParsed = serverSchema.safeParse({
 export const env = {
   NEXT_PUBLIC_SUPABASE_URL:
     clientParsed.data?.NEXT_PUBLIC_SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    rawEnv.NEXT_PUBLIC_SUPABASE_URL ||
     PUBLIC_SUPABASE_URL,
   NEXT_PUBLIC_SUPABASE_ANON_KEY:
     clientParsed.data?.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    rawEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     PUBLIC_SUPABASE_ANON_KEY,
   NEXT_PUBLIC_APP_URL:
     clientParsed.data?.NEXT_PUBLIC_APP_URL ||
-    process.env.NEXT_PUBLIC_APP_URL ||
+    rawEnv.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
       : "http://localhost:3000"),
   NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED:
     clientParsed.data?.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED ??
-    (process.env.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true"
-      ? "true"
-      : "false"),
+    (rawEnv.NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED === "true" ? "true" : "false"),
   NEXT_PUBLIC_VAPID_PUBLIC_KEY:
     clientParsed.data?.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
+    rawEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY ||
     "",
 } as const;
 
