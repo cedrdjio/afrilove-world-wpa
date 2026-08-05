@@ -29,7 +29,6 @@ export const ROUTES = {
   filters: "/filters",
   activity: "/activity",
   premium: "/premium",
-  events: "/events",
 } as const;
 
 export type RouteKey = keyof typeof ROUTES;
@@ -52,7 +51,6 @@ export const PROTECTED_PREFIXES = [
   "/filters",
   "/activity",
   "/premium",
-  "/events",
 ] as const;
 
 /** Écrans d'authentification (interdits aux membres déjà connectés). */

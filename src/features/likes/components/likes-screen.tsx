@@ -1,17 +1,26 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m } from "framer-motion";
-import { Heart, Lock } from "lucide-react";
+import { Bookmark, Heart, Lock, X } from "lucide-react";
 
 import { ROUTES } from "@/constants/routes";
 import { DEMO_INCOMING_LIKES } from "@/features/profiles/data";
 import { initials } from "@/utils/format";
 import { useAuth } from "@/providers/auth-provider";
 import { useEntitlements, useLikers } from "@/features/premium/hooks";
+import {
+  useSavedFavorites,
+  useToggleFavorite,
+} from "@/features/favorites/hooks";
+import type { SavedFavorite } from "@/features/favorites/service";
+import { cn } from "@/lib/utils";
 
 const EASE = [0.23, 1, 0.32, 1] as const;
+
+type Tab = "received" | "favorites";
 
 /** Modèle unifié de carte, alimenté par les données réelles ou la démo. */
 interface LikeItem {
@@ -23,12 +32,85 @@ interface LikeItem {
 }
 
 /**
- * « Qui m'a liké » (« 10 »). Grille immersive : en Premium, les vrais visages
- * mènent à la fiche ; sinon des cartes verrouillées (aucune photo divulguée)
- * derrière le paywall. Branché sur `get_my_entitlements` + `get_my_likers` ;
- * l'aperçu non authentifié retombe sur la démo.
+ * Hub « Mes likes » (« 10 »). Deux onglets sur un même fond premium :
+ * - « Reçus » : qui m'a liké (`get_my_likers` + paywall Premium) ;
+ * - « Favoris » : mes signets (`get_saved_favorites`), invisibles pour autrui.
+ * Regroupe ce qui était auparavant deux écrans, dont l'un (favoris) n'était
+ * plus accessible depuis la navigation — parité migration précédente.
  */
 export function LikesScreen() {
+  const [tab, setTab] = useState<Tab>("received");
+
+  return (
+    <div
+      className="dark relative flex min-h-dvh flex-col overflow-hidden px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 text-white"
+      style={{
+        background:
+          "linear-gradient(158deg,#2E2440 0%,#3B2C5C 55%,#4A3C7A 100%)",
+      }}
+    >
+      <div className="bg-accent/25 pointer-events-none absolute top-36 -right-24 size-72 rounded-full blur-3xl" />
+
+      <header className="relative z-10">
+        <h1 className="font-display text-center text-2xl font-extrabold">
+          Mes likes
+        </h1>
+        <TabSwitch tab={tab} onChange={setTab} />
+      </header>
+
+      {tab === "received" ? <ReceivedPanel /> : <FavoritesPanel />}
+    </div>
+  );
+}
+
+/** Sélecteur segmenté « Reçus / Favoris », lisible sur le fond sombre. */
+function TabSwitch({
+  tab,
+  onChange,
+}: {
+  tab: Tab;
+  onChange: (tab: Tab) => void;
+}) {
+  const tabs: { key: Tab; label: string; Icon: typeof Heart }[] = [
+    { key: "received", label: "Reçus", Icon: Heart },
+    { key: "favorites", label: "Favoris", Icon: Bookmark },
+  ];
+
+  return (
+    <div className="relative z-10 mx-auto mt-4 flex w-fit items-center gap-1 rounded-[var(--radius-pill)] border border-white/15 bg-white/10 p-1 backdrop-blur-md">
+      {tabs.map(({ key, label, Icon }) => {
+        const active = tab === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            aria-pressed={active}
+            className={cn(
+              "relative flex items-center gap-1.5 rounded-[var(--radius-pill)] px-4 py-2 text-[0.82rem] font-bold whitespace-nowrap transition-colors",
+              active ? "text-white" : "text-white/60 hover:text-white/85",
+            )}
+          >
+            {active && (
+              <m.span
+                layoutId="likes-tab-active"
+                className="gradient-signature shadow-brand absolute inset-0 -z-10 rounded-[var(--radius-pill)]"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                aria-hidden
+              />
+            )}
+            <Icon className="size-4" aria-hidden />
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ------------------------------- Onglet Reçus ------------------------------ */
+
+function ReceivedPanel() {
   const { isAuthenticated } = useAuth();
   const { data: entitlements } = useEntitlements();
   const isPremium = Boolean(entitlements?.isPremium);
@@ -68,32 +150,19 @@ export function LikesScreen() {
   const showEmpty = isAuthenticated && !isLoading && total === 0;
 
   return (
-    <div
-      className="dark relative flex min-h-dvh flex-col overflow-hidden px-5 pt-[max(1.25rem,env(safe-area-inset-top))] pb-28 text-white"
-      style={{
-        background:
-          "linear-gradient(158deg,#2E2440 0%,#3B2C5C 55%,#4A3C7A 100%)",
-      }}
-    >
-      <div className="bg-accent/25 pointer-events-none absolute top-36 -right-24 size-72 rounded-full blur-3xl" />
-
-      <header className="relative z-10 text-center">
-        <h1 className="font-display text-2xl font-extrabold">
-          Ils t&apos;ont liké
-        </h1>
-        <p className="mt-1 text-sm text-white/65">
-          {showEmpty ? (
-            "Personne pour l'instant — continue à explorer"
-          ) : (
-            <>
-              <span className="text-brand-300 font-bold">
-                {total} personne{total > 1 ? "s" : ""}
-              </span>{" "}
-              {total > 1 ? "attendent" : "attend"} ton like
-            </>
-          )}
-        </p>
-      </header>
+    <>
+      <p className="relative z-10 mt-3 text-center text-sm text-white/65">
+        {showEmpty ? (
+          "Personne pour l'instant — continue à explorer"
+        ) : (
+          <>
+            <span className="text-brand-300 font-bold">
+              {total} personne{total > 1 ? "s" : ""}
+            </span>{" "}
+            {total > 1 ? "attendent" : "attend"} ton like
+          </>
+        )}
+      </p>
 
       {isLoading && isAuthenticated ? (
         <div className="relative z-10 mt-6 grid flex-1 grid-cols-2 gap-3.5">
@@ -148,7 +217,7 @@ export function LikesScreen() {
           </Link>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -217,6 +286,135 @@ function LikeCard({ item }: { item: LikeItem }) {
       >
         {inner}
       </Link>
+    </m.div>
+  );
+}
+
+/* ------------------------------ Onglet Favoris ----------------------------- */
+
+function FavoritesPanel() {
+  const { isAuthenticated } = useAuth();
+  const { data, isLoading } = useSavedFavorites();
+
+  if (!isAuthenticated) {
+    return (
+      <div className="relative z-10 mt-16 flex flex-1 flex-col items-center justify-center text-center">
+        <span className="grid size-16 place-items-center rounded-full bg-white/10">
+          <Bookmark className="size-7" aria-hidden />
+        </span>
+        <p className="mt-4 max-w-[16rem] text-sm text-white/70">
+          Connectez-vous pour retrouver les profils mis de côté.
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="relative z-10 mt-6 space-y-2.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div
+            key={i}
+            className="h-[76px] animate-pulse rounded-[var(--radius-md)] bg-white/10"
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <div className="relative z-10 mt-16 flex flex-1 flex-col items-center justify-center text-center">
+        <span className="grid size-16 place-items-center rounded-full bg-white/10">
+          <Bookmark className="size-8" aria-hidden />
+        </span>
+        <p className="font-display mt-4 text-lg font-bold">
+          Aucun favori pour l&apos;instant
+        </p>
+        <p className="mt-1 max-w-xs text-sm text-white/70">
+          Depuis un profil, touchez « ⋯ » puis « Ajouter aux favoris » pour le
+          retrouver ici.
+        </p>
+        <Link
+          href={ROUTES.discover}
+          className="glass mt-6 rounded-[var(--radius-pill)] border-white/25 bg-white/10 px-6 py-2.5 text-sm font-bold"
+        >
+          Découvrir des profils
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <m.div
+      initial="hidden"
+      animate="show"
+      variants={{ show: { transition: { staggerChildren: 0.05 } } }}
+      className="relative z-10 mt-6 space-y-2.5"
+    >
+      {data.map((fav) => (
+        <FavoriteRow key={fav.id} fav={fav} />
+      ))}
+    </m.div>
+  );
+}
+
+function FavoriteRow({ fav }: { fav: SavedFavorite }) {
+  const toggle = useToggleFavorite();
+
+  return (
+    <m.div
+      variants={{
+        hidden: { opacity: 0, y: 8 },
+        show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
+      }}
+      className="flex items-center gap-3 rounded-[var(--radius-md)] border border-white/12 bg-white/10 p-3 backdrop-blur-md"
+    >
+      <Link
+        href={`${ROUTES.discover}/${fav.id}`}
+        className="flex min-w-0 flex-1 items-center gap-3"
+      >
+        <span className="relative size-13 shrink-0 overflow-hidden rounded-[var(--radius-md)] bg-white/10">
+          {fav.avatarUrl ? (
+            <Image
+              src={fav.avatarUrl}
+              alt={fav.firstName}
+              fill
+              sizes="52px"
+              className="object-cover"
+            />
+          ) : (
+            <span className="font-display grid size-full place-items-center text-sm font-bold text-white/80">
+              {initials(fav.firstName)}
+            </span>
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="font-display truncate font-bold">
+              {fav.firstName}
+            </span>
+            {fav.isVerified && (
+              <Heart
+                className="text-brand-300 size-3.5 fill-current"
+                aria-hidden
+              />
+            )}
+          </div>
+          {fav.city && (
+            <p className="truncate text-sm text-white/60">{fav.city}</p>
+          )}
+        </div>
+      </Link>
+      <button
+        type="button"
+        onClick={() => toggle.mutate({ targetId: fav.id, isFavorite: true })}
+        disabled={toggle.isPending}
+        aria-label={`Retirer ${fav.firstName} des favoris`}
+        className="grid size-9 shrink-0 place-items-center rounded-full text-white/60 hover:text-white disabled:opacity-50"
+      >
+        <X className="size-5" aria-hidden />
+      </button>
     </m.div>
   );
 }

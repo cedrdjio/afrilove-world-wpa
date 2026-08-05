@@ -46,7 +46,7 @@ export function DiscoverScreen() {
       </header>
 
       <div className="relative z-10 mt-5 flex min-h-0 flex-1 flex-col">
-        {isAuthenticated ? <RealSwipeDeck /> : <SwipeDeck />}
+        {isAuthenticated ? <RealSwipeDeck feed={feed} /> : <SwipeDeck />}
       </div>
 
       {!isAuthenticated && <MatchOverlay />}

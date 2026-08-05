@@ -19,12 +19,18 @@ const ACTION_BY_DIRECTION: Record<SwipeDirection, SwipeAction> = {
   super: "super_like",
 };
 
+/** Onglet de découverte : « Pour toi » (compatibilité) ou « À proximité » (distance). */
+export type DiscoveryFeed = "foryou" | "nearby";
+
 /**
  * Deck de découverte réel (membre connecté). Alimente le deck présentationnel
  * avec `search_profiles`, persiste chaque swipe (`useSwipe`) et déclenche
  * l'overlay de match sur un like réciproque détecté côté serveur.
+ *
+ * `feed` réordonne le même vivier : « Pour toi » met en avant la meilleure
+ * compatibilité, « À proximité » les profils géographiquement les plus proches.
  */
-export function RealSwipeDeck() {
+export function RealSwipeDeck({ feed = "foryou" }: { feed?: DiscoveryFeed }) {
   const { profile: me } = useAuth();
   const { data, isLoading, refetch, isFetching } = useDiscoveryFeed("all");
   const swipeMutation = useSwipe();
@@ -38,17 +44,36 @@ export function RealSwipeDeck() {
   >([]);
   const [match, setMatch] = useState<MatchView | null>(null);
 
-  // Un nouveau vivier (filtres modifiés, refill) réinitialise le pointeur :
-  // les profils déjà swipés sont exclus côté serveur, la liste est fraîche.
+  // Un nouveau vivier (filtres modifiés, refill) OU un changement d'onglet
+  // (Pour toi / À proximité) réinitialise le pointeur : les profils déjà
+  // swipés sont exclus côté serveur, la liste est fraîche.
   // Réinitialisation pendant le rendu (motif React recommandé, pas d'effet).
   const [seenData, setSeenData] = useState(data);
-  if (seenData !== data) {
+  const [seenFeed, setSeenFeed] = useState(feed);
+  if (seenData !== data || seenFeed !== feed) {
     setSeenData(data);
+    setSeenFeed(feed);
     setIndex(0);
     setHistory([]);
   }
 
-  const queue = useMemo(() => data ?? [], [data]);
+  // Réordonne le vivier selon l'onglet actif. « À proximité » trie par
+  // distance croissante (profils sans distance en dernier) ; « Pour toi »
+  // met en tête la meilleure compatibilité.
+  const queue = useMemo(() => {
+    const list = data ?? [];
+    const sorted = [...list];
+    if (feed === "nearby") {
+      sorted.sort((a, b) => {
+        const da = a.distanceKm ?? Number.POSITIVE_INFINITY;
+        const db = b.distanceKm ?? Number.POSITIVE_INFINITY;
+        return da - db;
+      });
+    } else {
+      sorted.sort((a, b) => b.compatibility - a.compatibility);
+    }
+    return sorted;
+  }, [data, feed]);
   const top = queue[index];
   const next = queue[index + 1];
 
