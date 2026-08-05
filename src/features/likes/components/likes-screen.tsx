@@ -272,11 +272,16 @@ function LikeCard({ item }: { item: LikeItem }) {
   };
 
   return locked ? (
-    <m.div
-      variants={variants}
-      className="relative aspect-3/4 overflow-hidden rounded-[var(--radius-lg)] shadow-xl"
-    >
-      {inner}
+    <m.div variants={variants} className="relative aspect-3/4">
+      {/* Carte verrouillée : le clic invite à souscrire (on ne dévoile jamais
+          le visage tant que le compte n'est pas Premium). */}
+      <Link
+        href={ROUTES.premium}
+        aria-label="Débloquer avec Premium"
+        className="relative block size-full overflow-hidden rounded-[var(--radius-lg)] shadow-xl active:scale-[0.98]"
+      >
+        {inner}
+      </Link>
     </m.div>
   ) : (
     <m.div variants={variants} className="relative aspect-3/4">
