@@ -13,6 +13,7 @@ import { useHaptics } from "@/hooks/use-haptics";
 import { findProfile } from "@/features/profiles/data";
 import { useFavoriteIds, useToggleFavorite } from "@/features/favorites/hooks";
 import { useBlockProfile } from "@/features/moderation/hooks";
+import { useConversationsQuery } from "@/features/messaging/hooks";
 
 import { discoveryService } from "../service";
 import { usePublicProfile, useSwipe } from "../hooks";
@@ -86,12 +87,16 @@ function RealProfileDetail({ id }: { id: string }) {
   const haptic = useHaptics();
   const { profile: me } = useAuth();
   const { data, isLoading } = usePublicProfile(id);
+  const { data: conversations } = useConversationsQuery();
   const swipeMutation = useSwipe();
   const block = useBlockProfile();
   const favoriteIds = useFavoriteIds();
   const toggleFavorite = useToggleFavorite();
   const [match, setMatch] = useState<MatchView | null>(null);
   const [sheet, setSheet] = useState<"closed" | "menu" | "report">("closed");
+
+  // Conversation déjà ouverte avec cette personne (match existant) ?
+  const existingConversation = conversations?.find((c) => c.partnerId === id);
 
   useEffect(() => {
     discoveryService.recordView(id).catch(() => {});
@@ -170,6 +175,31 @@ function RealProfileDetail({ id }: { id: string }) {
           photo: p.photos[0] ?? null,
         });
       } else {
+        toast.success(`Like envoyé à ${p.firstName} 💜`);
+        router.push(ROUTES.discover);
+      }
+    });
+  };
+
+  // « Message » : ouvre la conversation si un match existe déjà, sinon envoie un
+  // like pour tenter de connecter (on ne peut discuter qu'une fois le match fait).
+  const onMessage = () => {
+    haptic("light");
+    if (existingConversation) {
+      router.push(`${ROUTES.messages}/${existingConversation.matchId}`);
+      return;
+    }
+    doSwipe("like", (isMatch, matchId) => {
+      if (isMatch && matchId) {
+        setMatch({
+          conversationId: matchId,
+          firstName: p.firstName,
+          photo: p.photos[0] ?? null,
+        });
+      } else {
+        toast(
+          `Like envoyé à ${p.firstName}. Vous pourrez discuter dès que c'est réciproque.`,
+        );
         router.push(ROUTES.discover);
       }
     });
@@ -185,7 +215,8 @@ function RealProfileDetail({ id }: { id: string }) {
           doSwipe("pass", () => router.push(ROUTES.discover));
         }}
         onLike={onLike}
-        onMessage={onLike}
+        onMessage={onMessage}
+        messageLabel={existingConversation ? "Ouvrir le chat" : "Message"}
         onOptions={() => setSheet("menu")}
         onReport={() => setSheet("report")}
         onBlock={doBlock}
