@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { m } from "framer-motion";
@@ -52,19 +52,55 @@ export function Welcome() {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
 
+  // Défilement automatique : le carrousel avance seul et boucle. On met en
+  // pause pendant que l'utilisateur interagit, puis on reprend après un délai.
+  const pausedRef = useRef(false);
+  const resumeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    if (reduce) return;
+
+    const id = setInterval(() => {
+      const el = scrollerRef.current;
+      if (!el || pausedRef.current) return;
+      const current = Math.round(el.scrollLeft / el.clientWidth);
+      const next = (current + 1) % SLIDES.length;
+      el.scrollTo({ left: next * el.clientWidth, behavior: "smooth" });
+    }, 4500);
+
+    return () => {
+      clearInterval(id);
+      if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    };
+  }, []);
+
+  const pause = () => {
+    pausedRef.current = true;
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+  };
+
+  const resumeSoon = () => {
+    if (resumeTimer.current) clearTimeout(resumeTimer.current);
+    resumeTimer.current = setTimeout(() => {
+      pausedRef.current = false;
+    }, 6000);
+  };
+
   const handleScroll = () => {
     const el = scrollerRef.current;
     if (!el) return;
     const next = Math.round(el.scrollLeft / el.clientWidth);
-    if (next !== index) {
-      setIndex(next);
-      haptic("light");
-    }
+    if (next !== index) setIndex(next);
   };
 
   const goTo = (i: number) => {
     const el = scrollerRef.current;
     if (!el) return;
+    pause();
+    resumeSoon();
     el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
   };
 
@@ -74,6 +110,10 @@ export function Welcome() {
       <div
         ref={scrollerRef}
         onScroll={handleScroll}
+        onPointerDown={pause}
+        onPointerUp={resumeSoon}
+        onPointerCancel={resumeSoon}
+        onTouchEnd={resumeSoon}
         aria-roledescription="carousel"
         aria-label="Présentation d'Afrilove World"
         className="flex h-dvh snap-x snap-mandatory [scrollbar-width:none] overflow-x-auto overflow-y-hidden [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
