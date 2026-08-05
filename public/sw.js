@@ -10,7 +10,7 @@
  *
  * ⚠️ Incrémentez CACHE_VERSION à chaque changement de stratégie de cache.
  */
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const PRECACHE = `alw-precache-${CACHE_VERSION}`;
 const RUNTIME = `alw-runtime-${CACHE_VERSION}`;
 const IMAGES = `alw-images-${CACHE_VERSION}`;

@@ -129,6 +129,18 @@ export default function RootLayout({
               "try{if(sessionStorage.getItem('afl-splash-seen'))document.documentElement.setAttribute('data-splash','seen')}catch(e){}",
           }}
         />
+        {/* Capte `beforeinstallprompt` dès le 1er octet : Chrome l'émet très tôt,
+            souvent AVANT que React ne monte son écouteur. Sans cette capture on
+            rate l'invite native, le bouton disparaît, et l'utilisateur se rabat
+            sur le menu du navigateur — qui crée un simple RACCOURCI au lieu
+            d'installer une vraie PWA. On dépose l'événement sur window pour que
+            `useInstallPrompt` le relise au montage. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var s=window.__afInstall=window.__afInstall||{evt:null,installed:false};window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();s.evt=e;window.dispatchEvent(new Event('af-install-change'));});window.addEventListener('appinstalled',function(){s.evt=null;s.installed=true;window.dispatchEvent(new Event('af-install-change'));});}catch(e){}})();",
+          }}
+        />
         {/* Splash de démarrage — peint dès le 1er rendu serveur, animé en CSS
             pur, puis retiré par <SplashScreen> une fois l'app prête. */}
         <div id="app-splash" aria-hidden="true">
