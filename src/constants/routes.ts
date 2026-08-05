@@ -27,6 +27,8 @@ export const ROUTES = {
   favorites: "/favorites",
   verify: "/verify",
   settings: "/settings",
+  settingsPassword: "/settings/password",
+  settingsBlocked: "/settings/blocked",
   filters: "/filters",
   activity: "/activity",
   premium: "/premium",

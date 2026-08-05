@@ -1,8 +1,34 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { useAuth } from "@/providers/auth-provider";
 
 import { moderationService, type ReportReason } from "./service";
+
+/** Liste des membres bloqués (écran « Utilisateurs bloqués »). */
+export function useBlockedProfiles() {
+  const { isAuthenticated } = useAuth();
+  return useQuery({
+    queryKey: ["blocked-profiles"],
+    queryFn: moderationService.fetchBlocked,
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+  });
+}
+
+/** Débloque un membre puis rafraîchit la liste + la découverte. */
+export function useUnblockProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targetId: string) =>
+      moderationService.unblockProfile(targetId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["blocked-profiles"] });
+      queryClient.invalidateQueries({ queryKey: ["discovery"] });
+    },
+  });
+}
 
 export function useBlockProfile() {
   const queryClient = useQueryClient();

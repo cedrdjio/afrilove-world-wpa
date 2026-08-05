@@ -45,7 +45,42 @@ async function reportProfile(
   if (error) throw error;
 }
 
+/** Profil bloqué par le membre courant (écran « Utilisateurs bloqués »). */
+export interface BlockedProfile {
+  id: string;
+  firstName: string;
+  avatarUrl: string | null;
+  blockedAt: string;
+}
+
+async function fetchBlocked(): Promise<BlockedProfile[]> {
+  const { data, error } = await db().rpc("get_my_blocked_profiles");
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.blocked_id,
+    firstName: r.first_name ?? "",
+    avatarUrl: r.avatar_url,
+    blockedAt: r.blocked_at,
+  }));
+}
+
+/** Débloque un membre : supprime la ligne `blocks` correspondante. */
+async function unblockProfile(targetId: string): Promise<void> {
+  const {
+    data: { user },
+  } = await db().auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+  const { error } = await db()
+    .from("blocks")
+    .delete()
+    .eq("blocker_id", user.id)
+    .eq("blocked_id", targetId);
+  if (error) throw error;
+}
+
 export const moderationService = {
   blockProfile,
   reportProfile,
+  fetchBlocked,
+  unblockProfile,
 };
