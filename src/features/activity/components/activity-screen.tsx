@@ -93,6 +93,7 @@ function ActivityView({
     <div className="mx-auto w-full max-w-md px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
       <PageHeader
         title="Activité"
+        back
         trailing={
           onReadAll ? (
             <button

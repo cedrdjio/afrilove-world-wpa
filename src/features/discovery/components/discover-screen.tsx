@@ -9,6 +9,7 @@ import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { VerificationBanner } from "@/features/kyc/components/verification-banner";
 
 import { MatchOverlay } from "./match-overlay";
 import { SwipeDeck } from "./swipe-deck";
@@ -55,6 +56,8 @@ export function DiscoverScreen() {
       <div className="relative z-10 mt-4 flex justify-center">
         <FeedToggle value={feed} onChange={setFeed} />
       </div>
+
+      {isAuthenticated && <VerificationBanner className="relative z-10 mt-4" />}
 
       <div className="relative z-10 mt-4 flex min-h-0 flex-1 flex-col">
         {isAuthenticated ? <RealSwipeDeck feed={feed} /> : <SwipeDeck />}

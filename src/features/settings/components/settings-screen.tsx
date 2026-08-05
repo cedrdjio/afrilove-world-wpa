@@ -46,7 +46,7 @@ export function SettingsScreen({
 
   return (
     <div className="mx-auto w-full max-w-md px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
-      <PageHeader title="Réglages" />
+      <PageHeader title="Réglages" back />
 
       <div className="mt-6 space-y-4">
         <Link

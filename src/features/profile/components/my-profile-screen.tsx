@@ -9,6 +9,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
 import { ROUTES } from "@/constants/routes";
 import { useEntitlements } from "@/features/premium/hooks";
+import { VerificationBanner } from "@/features/kyc/components/verification-banner";
 
 export interface ProfileViewModel {
   firstName: string;
@@ -91,6 +92,12 @@ export function MyProfileScreen({ vm }: { vm: ProfileViewModel }) {
             </div>
           </div>
         </Section>
+
+        {!vm.verified && (
+          <Section>
+            <VerificationBanner />
+          </Section>
+        )}
 
         <Section>
           <div className="flex gap-3">
