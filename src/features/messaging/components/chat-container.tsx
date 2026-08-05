@@ -6,6 +6,10 @@ import { Loader2 } from "lucide-react";
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
 import { usePresenceStore } from "@/features/presence/store";
+import { useEntitlements } from "@/features/premium/hooks";
+
+/** Messages gratuits autorisés par conversation (avant invitation à passer Premium). */
+const FREE_MESSAGES_PER_CONVERSATION = 5;
 
 import { findConversation } from "@/features/messaging/data";
 import {
@@ -37,6 +41,7 @@ function LiveChat({ matchId, userId }: { matchId: string; userId: string }) {
     useConversationsQuery();
   const onlineIds = usePresenceStore((s) => s.onlineIds);
 
+  const { data: entitlements } = useEntitlements();
   const conv = conversations?.find((c) => c.matchId === matchId);
   useMarkConversationRead(matchId, conv?.unreadCount);
   const sendMessage = useSendMessage(matchId);
@@ -60,6 +65,13 @@ function LiveChat({ matchId, userId }: { matchId: string; userId: string }) {
     sentAt: m.createdAt,
   }));
 
+  // Limite gratuite : 5 messages envoyés par conversation. Les abonnés (premium)
+  // ne sont jamais bloqués. On compte uniquement les messages émis par le membre.
+  const sentByMe = bubbles.filter((b) => b.mine).length;
+  const remainingMessages = entitlements?.isPremium
+    ? null
+    : Math.max(0, FREE_MESSAGES_PER_CONVERSATION - sentByMe);
+
   return (
     <ChatScreen
       partner={{
@@ -74,6 +86,7 @@ function LiveChat({ matchId, userId }: { matchId: string; userId: string }) {
       matchTimeIso={conv.matchedAt}
       onSend={(body) => sendMessage.mutate(body)}
       disabled={sendMessage.isPending}
+      remainingMessages={remainingMessages}
     />
   );
 }

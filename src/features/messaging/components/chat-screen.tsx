@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Phone, Plus, Send, Video } from "lucide-react";
+import { ChevronLeft, Send, Smile, Sparkles } from "lucide-react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { IconButton } from "@/components/ui/icon-button";
@@ -39,6 +39,7 @@ export function ChatScreen({
   typing = false,
   onSend,
   disabled = false,
+  remainingMessages = null,
 }: {
   partner: ChatPartner;
   messages: ChatBubble[];
@@ -46,6 +47,8 @@ export function ChatScreen({
   typing?: boolean;
   onSend: (body: string) => void;
   disabled?: boolean;
+  /** Messages gratuits restants dans cette conversation. null = illimité (premium). */
+  remainingMessages?: number | null;
 }) {
   const router = useRouter();
   const haptic = useHaptics();
@@ -56,9 +59,15 @@ export function ChatScreen({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length, typing]);
 
+  const limitReached = remainingMessages !== null && remainingMessages <= 0;
+  const lowOnMessages =
+    remainingMessages !== null &&
+    remainingMessages > 0 &&
+    remainingMessages <= 3;
+
   const send = () => {
     const body = draft.trim();
-    if (!body || disabled) return;
+    if (!body || disabled || limitReached) return;
     haptic("light");
     onSend(body);
     setDraft("");
@@ -100,22 +109,8 @@ export function ChatScreen({
             </div>
           </div>
         </Link>
-        <IconButton
-          tone="soft"
-          size="sm"
-          shape="square"
-          aria-label="Appel audio"
-        >
-          <Phone className="size-5" aria-hidden />
-        </IconButton>
-        <IconButton
-          tone="soft"
-          size="sm"
-          shape="square"
-          aria-label="Appel vidéo"
-        >
-          <Video className="size-5" aria-hidden />
-        </IconButton>
+        {/* Les appels audio/vidéo ne sont pas proposés à ce stade — boutons
+            volontairement retirés de l'en-tête. */}
       </header>
 
       {/* Fil */}
@@ -152,37 +147,161 @@ export function ChatScreen({
         <div ref={endRef} />
       </div>
 
-      {/* Composeur */}
-      <div className="bg-background flex items-center gap-2.5 px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <IconButton tone="glass" shape="square" aria-label="Ajouter un média">
-          <Plus className="size-5" aria-hidden />
-        </IconButton>
-        <label className="sr-only" htmlFor="chat-input">
-          Écris un message
-        </label>
-        <input
-          id="chat-input"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder="Écris un message…"
-          className="glass text-foreground placeholder:text-subtle-foreground focus-visible:ring-ring h-12 flex-1 rounded-[var(--radius-pill)] px-5 text-sm outline-none focus-visible:ring-2"
-        />
-        <IconButton
-          tone="gradient"
-          shape="round"
-          aria-label="Envoyer"
-          onClick={send}
-          disabled={!draft.trim() || disabled}
-        >
-          <Send className="size-5" aria-hidden />
-        </IconButton>
-      </div>
+      {/* Composeur (ou invite premium quand la limite gratuite est atteinte) */}
+      {limitReached ? (
+        <div className="bg-background px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <Link
+            href={ROUTES.premium}
+            className="gradient-signature shadow-brand flex items-center gap-3 rounded-[var(--radius-lg)] px-4 py-3.5 text-white active:scale-[0.99]"
+          >
+            <Sparkles className="size-5 shrink-0 fill-white" aria-hidden />
+            <span className="flex-1 text-sm leading-tight font-semibold">
+              Limite gratuite atteinte (5 messages). Passe Premium pour discuter
+              sans limite.
+            </span>
+            <span className="text-primary font-display rounded-[var(--radius-pill)] bg-white px-3 py-1.5 text-xs font-bold">
+              Passer Premium
+            </span>
+          </Link>
+        </div>
+      ) : (
+        <div className="bg-background relative px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          {lowOnMessages && (
+            <p className="text-subtle-foreground mb-2 text-center text-xs font-semibold">
+              Il te reste {remainingMessages} message
+              {remainingMessages! > 1 ? "s" : ""} gratuit
+              {remainingMessages! > 1 ? "s" : ""}
+            </p>
+          )}
+          <div className="flex items-center gap-2.5">
+            <EmojiPicker
+              onPick={(emoji) => {
+                setDraft((d) => d + emoji);
+                haptic("light");
+              }}
+            />
+            <label className="sr-only" htmlFor="chat-input">
+              Écris un message
+            </label>
+            <input
+              id="chat-input"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+              placeholder="Écris un message…"
+              className="glass text-foreground placeholder:text-subtle-foreground focus-visible:ring-ring h-12 flex-1 rounded-[var(--radius-pill)] px-5 text-sm outline-none focus-visible:ring-2"
+            />
+            <IconButton
+              tone="gradient"
+              shape="round"
+              aria-label="Envoyer"
+              onClick={send}
+              disabled={!draft.trim() || disabled}
+            >
+              <Send className="size-5" aria-hidden />
+            </IconButton>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Palette d'emojis courants, insérés dans le message (aucune dépendance externe). */
+const EMOJIS = [
+  "😀",
+  "😁",
+  "😂",
+  "🤣",
+  "😊",
+  "😍",
+  "🥰",
+  "😘",
+  "😉",
+  "😎",
+  "🤗",
+  "🤩",
+  "😇",
+  "🙃",
+  "😅",
+  "😳",
+  "🥺",
+  "😢",
+  "😭",
+  "😤",
+  "😴",
+  "🤔",
+  "🙌",
+  "👏",
+  "🙏",
+  "👍",
+  "👎",
+  "👊",
+  "🤝",
+  "💪",
+  "🔥",
+  "✨",
+  "🎉",
+  "❤️",
+  "🧡",
+  "💛",
+  "💚",
+  "💙",
+  "💜",
+  "💖",
+  "💕",
+  "💘",
+  "😻",
+  "🌹",
+  "🌸",
+  "☀️",
+  "🌙",
+  "⭐",
+  "🍀",
+  "🥂",
+];
+
+function EmojiPicker({ onPick }: { onPick: (emoji: string) => void }) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="relative">
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Fermer"
+            className="fixed inset-0 z-30 cursor-default"
+            onClick={() => setOpen(false)}
+          />
+          <div className="glass absolute bottom-14 left-0 z-40 grid w-[16.5rem] grid-cols-8 gap-1 rounded-[var(--radius-lg)] p-2 shadow-lg">
+            {EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                onClick={() => onPick(emoji)}
+                className="hover:bg-muted grid size-8 place-items-center rounded-md text-lg transition-colors"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <IconButton
+        tone="glass"
+        shape="square"
+        aria-label="Emojis"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <Smile className="size-5" aria-hidden />
+      </IconButton>
     </div>
   );
 }
