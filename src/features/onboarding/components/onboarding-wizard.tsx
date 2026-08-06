@@ -57,9 +57,11 @@ function isAdult(iso: string | null): boolean {
 const STEPS: StepDef[] = [
   {
     key: "name",
-    title: "Comment vous appeler ?",
-    subtitle: "Votre pseudo sera visible sur votre profil.",
-    valid: (d) => d.displayName.trim().length > 0,
+    title: "Votre identité",
+    subtitle:
+      "Votre prénom sera visible par les autres membres. Votre nom reste privé et sert à vérifier votre identité.",
+    valid: (d) =>
+      d.displayName.trim().length >= 2 && d.privateName.trim().length >= 2,
   },
   { key: "gender", title: "Vous êtes…", valid: (d) => !!d.gender },
   {
@@ -128,6 +130,25 @@ export function OnboardingWizard() {
   useEffect(() => {
     if (user && ownerId !== user.id) reset(user.id);
   }, [user, ownerId, reset]);
+
+  // Pré-remplit prénom/nom depuis les métadonnées d'inscription (saisie manuelle
+  // ou Google), pour ne pas les redemander. On ne touche jamais à une saisie
+  // déjà présente. `patch` (store zustand) n'est pas un setState React.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const first =
+      str(meta.first_name) ||
+      str(meta.given_name) ||
+      str(meta.name).split(" ")[0] ||
+      "";
+    const last = str(meta.last_name) || str(meta.family_name);
+    const fill: Partial<OnboardingData> = {};
+    if (first && !data.displayName) fill.displayName = first;
+    if (last && !data.privateName) fill.privateName = last;
+    if (Object.keys(fill).length > 0) patch(fill);
+  }, [user, data.displayName, data.privateName, patch]);
 
   // Onboarding déjà terminé → app.
   useEffect(() => {

@@ -9,6 +9,7 @@ import {
   Navigation,
   Plus,
   Ruler,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -185,27 +186,40 @@ function CatalogCards({
  * Identité — un écran par question
  * --------------------------------------------------------------------- */
 
-/** Écran « Comment vous appeler ? » — pseudo + nom privé (même sujet). */
+/**
+ * Écran « Votre identité » — prénom ET nom réels (parité jalon mobile). Le nom
+ * complet est indispensable au KYC : il devra correspondre à la pièce
+ * d'identité pour obtenir le badge vérifié. Seul le prénom est public ; le nom
+ * reste privé (jamais affiché aux autres membres).
+ */
 export function NameStep({ data, patch }: StepProps) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <TextField
-        id="displayName"
-        label="Pseudo"
+        id="firstName"
+        label="Prénom"
         value={data.displayName}
-        placeholder="Votre prénom ou pseudo"
+        placeholder="Votre prénom"
         maxLength={40}
         onChange={(v) => patch({ displayName: v })}
       />
       <TextField
-        id="privateName"
+        id="lastName"
         label="Nom"
-        optional
         value={data.privateName}
-        placeholder="Privé — jamais affiché publiquement"
+        placeholder="Votre nom de famille"
         maxLength={60}
         onChange={(v) => patch({ privateName: v })}
       />
+      <p className="text-subtle-foreground flex items-start gap-2 text-xs leading-relaxed">
+        <ShieldCheck
+          className="text-primary mt-0.5 size-4 shrink-0"
+          aria-hidden
+        />
+        Utilisez votre vrai nom : il devra correspondre à votre pièce d’identité
+        pour obtenir le badge vérifié. Votre nom reste privé — seul votre prénom
+        est visible.
+      </p>
     </div>
   );
 }
@@ -873,7 +887,8 @@ export function ReviewStep({
       .join(", ") || "—";
 
   const rows: [string, string][] = [
-    ["Pseudo", data.displayName.trim() || "—"],
+    ["Prénom", data.displayName.trim() || "—"],
+    ["Nom", data.privateName.trim() || "—"],
     ["Je suis", labelOf(GENDER_OPTIONS, data.gender)],
     ["Je recherche", labelOf(LOOKING_FOR_OPTIONS, data.lookingFor)],
     [

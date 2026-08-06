@@ -9,9 +9,9 @@ export type WantsChildren = "not_wanted" | "wants" | "has_children";
 
 /** Brouillon d'onboarding (persisté localement le temps du parcours). */
 export interface OnboardingData {
-  /** Pseudo public — écrit dans `first_name` + `display_name`. */
+  /** Prénom réel, public — écrit dans `first_name`. */
   displayName: string;
-  /** Nom privé facultatif — écrit dans `last_name`. */
+  /** Nom de famille réel, privé mais REQUIS (KYC) — écrit dans `last_name`. */
   privateName: string;
   gender: Gender | null;
   lookingFor: LookingFor | null;
