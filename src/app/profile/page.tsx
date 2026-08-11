@@ -11,7 +11,6 @@ import {
   type ProfileViewModel,
 } from "@/features/profile/components/my-profile-screen";
 import { useProfileStats } from "@/features/profile/hooks";
-import { DEMO_ME } from "@/features/profiles/data";
 import { useAuth } from "@/providers/auth-provider";
 
 function ageFrom(birthDate: string | null): number | null {
@@ -19,10 +18,30 @@ function ageFrom(birthDate: string | null): number | null {
   return Math.floor((Date.now() - new Date(birthDate).getTime()) / 3.15576e10);
 }
 
+/** Complétion réelle estimée à partir des champs clés renseignés (aucune
+ *  valeur de démonstration en production). */
+function completionOf(p: {
+  first_name: string | null;
+  bio: string | null;
+  avatar_url: string | null;
+  birth_date: string | null;
+  city: string | null;
+}): number {
+  const filled = [
+    p.first_name,
+    p.bio,
+    p.avatar_url,
+    p.birth_date,
+    p.city,
+  ].filter(Boolean).length;
+  return Math.round((filled / 5) * 100);
+}
+
 /**
  * « Mon profil » (« 08 »). Garde d'authentification + redirection onboarding
- * conservées ; les données Supabase réelles alimentent le view-model, avec
- * repli sur les valeurs de démonstration pour les champs non renseignés.
+ * conservées ; le view-model est alimenté UNIQUEMENT par les données Supabase
+ * réelles. Aucun repli sur des données de démonstration : un vrai utilisateur
+ * ne doit jamais voir de fausses statistiques, ville ou photo.
  */
 export default function ProfilePage() {
   const router = useRouter();
@@ -43,19 +62,17 @@ export default function ProfilePage() {
     );
   }
 
-  const city =
-    [profile.city, profile.country].filter(Boolean).join(", ") ||
-    `${DEMO_ME.origin} · vit à ${DEMO_ME.city}`;
+  const city = [profile.city, profile.country].filter(Boolean).join(", ");
 
   const vm: ProfileViewModel = {
-    firstName: profile.first_name ?? DEMO_ME.firstName,
-    age: ageFrom(profile.birth_date) ?? DEMO_ME.age,
+    firstName: profile.first_name ?? "",
+    age: ageFrom(profile.birth_date),
     city,
-    avatar: profile.avatar_url ?? DEMO_ME.avatar,
-    bio: profile.bio ?? DEMO_ME.bio,
-    verified: profile.is_verified ?? DEMO_ME.verified,
-    completion: profile.profile_completed ? 100 : DEMO_ME.completion,
-    stats: stats ?? DEMO_ME.stats,
+    avatar: profile.avatar_url ?? null,
+    bio: profile.bio ?? "",
+    verified: profile.is_verified ?? false,
+    completion: profile.profile_completed ? 100 : completionOf(profile),
+    stats: stats ?? { views: 0, likes: 0, matches: 0 },
   };
 
   return (

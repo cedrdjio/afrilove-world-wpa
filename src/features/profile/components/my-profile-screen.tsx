@@ -15,7 +15,7 @@ export interface ProfileViewModel {
   firstName: string;
   age: number | null;
   city: string;
-  avatar: string;
+  avatar: string | null;
   bio: string;
   verified: boolean;
   completion: number;
