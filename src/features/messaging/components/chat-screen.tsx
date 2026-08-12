@@ -11,6 +11,7 @@ import { ROUTES } from "@/constants/routes";
 import { useHaptics } from "@/hooks/use-haptics";
 import { cn } from "@/lib/utils";
 import { formatClockTime } from "@/utils/format";
+import { looksLikeContactInfo } from "../contact-guard";
 
 export interface ChatBubble {
   id: string;
@@ -40,6 +41,7 @@ export function ChatScreen({
   onSend,
   disabled = false,
   remainingMessages = null,
+  canShareContact = true,
 }: {
   partner: ChatPartner;
   messages: ChatBubble[];
@@ -49,10 +51,13 @@ export function ChatScreen({
   disabled?: boolean;
   /** Messages gratuits restants dans cette conversation. null = illimité (premium). */
   remainingMessages?: number | null;
+  /** Faux pour un compte gratuit : partage de numéro / pseudo interdit (Premium requis). */
+  canShareContact?: boolean;
 }) {
   const router = useRouter();
   const haptic = useHaptics();
   const [draft, setDraft] = useState("");
+  const [contactBlocked, setContactBlocked] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +73,13 @@ export function ChatScreen({
   const send = () => {
     const body = draft.trim();
     if (!body || disabled || limitReached) return;
+    // Compte gratuit : pas de partage de coordonnées (numéro / pseudo externe).
+    // On bloque avant l'envoi et on invite au Premium ; le serveur reste juge.
+    if (!canShareContact && looksLikeContactInfo(body)) {
+      haptic("warning");
+      setContactBlocked(true);
+      return;
+    }
     haptic("light");
     onSend(body);
     setDraft("");
@@ -166,7 +178,22 @@ export function ChatScreen({
         </div>
       ) : (
         <div className="bg-background relative px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-          {lowOnMessages && (
+          {contactBlocked && (
+            <Link
+              href={ROUTES.premium}
+              className="mb-2 flex items-center gap-3 rounded-[var(--radius-lg)] border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-left active:scale-[0.99]"
+            >
+              <Sparkles
+                className="size-5 shrink-0 text-amber-500"
+                aria-hidden
+              />
+              <span className="flex-1 text-xs leading-tight font-semibold text-amber-700 dark:text-amber-300">
+                Le partage de numéro ou de contact est réservé au Premium. Passe
+                Premium pour échanger tes coordonnées.
+              </span>
+            </Link>
+          )}
+          {lowOnMessages && !contactBlocked && (
             <p className="text-subtle-foreground mb-2 text-center text-xs font-semibold">
               Il te reste {remainingMessages} message
               {remainingMessages! > 1 ? "s" : ""} gratuit
@@ -186,7 +213,10 @@ export function ChatScreen({
             <input
               id="chat-input"
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                if (contactBlocked) setContactBlocked(false);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();

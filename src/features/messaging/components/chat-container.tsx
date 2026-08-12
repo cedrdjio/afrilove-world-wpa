@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { ROUTES } from "@/constants/routes";
 import { useAuth } from "@/providers/auth-provider";
@@ -68,9 +69,28 @@ function LiveChat({ matchId, userId }: { matchId: string; userId: string }) {
   // Limite gratuite : 5 messages envoyés par conversation. Les abonnés (premium)
   // ne sont jamais bloqués. On compte uniquement les messages émis par le membre.
   const sentByMe = bubbles.filter((b) => b.mine).length;
-  const remainingMessages = entitlements?.isPremium
+  const isPremium = entitlements?.isPremium ?? false;
+  const remainingMessages = isPremium
     ? null
     : Math.max(0, FREE_MESSAGES_PER_CONVERSATION - sentByMe);
+
+  // Backstop : si le serveur refuse (limite ou partage de coordonnées) malgré le
+  // blocage client, on l'explique sans casser l'écran.
+  const onSend = (body: string) =>
+    sendMessage.mutate(body, {
+      onError: (err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("CONTACT_SHARING_PREMIUM_ONLY")) {
+          toast("Partage de coordonnées réservé au Premium.");
+        } else if (message.includes("FREE_MESSAGE_LIMIT_REACHED")) {
+          toast("Limite gratuite atteinte. Passe Premium pour continuer.");
+        } else if (message.includes("MESSAGE_RATE_LIMITED")) {
+          toast("Tu envoies trop vite. Patiente un instant.");
+        } else {
+          toast.error("Message non envoyé. Réessaie.");
+        }
+      },
+    });
 
   return (
     <ChatScreen
@@ -84,9 +104,10 @@ function LiveChat({ matchId, userId }: { matchId: string; userId: string }) {
       }}
       messages={bubbles}
       matchTimeIso={conv.matchedAt}
-      onSend={(body) => sendMessage.mutate(body)}
+      onSend={onSend}
       disabled={sendMessage.isPending}
       remainingMessages={remainingMessages}
+      canShareContact={isPremium}
     />
   );
 }

@@ -6,7 +6,7 @@ import { useAuth } from "@/providers/auth-provider";
 
 import { discoveryService } from "./service";
 import { useDiscoveryFilters } from "./filters-store";
-import type { DiscoveryFeedMode, SwipeAction } from "./types";
+import type { DiscoveryFeedMode, DiscoveryProfile, SwipeAction } from "./types";
 
 /**
  * Deck de l'écran Découverte. Chaque valeur des filtres fait partie de la clé
@@ -136,7 +136,18 @@ export function useSwipe() {
       if (!user) throw new Error("Not authenticated");
       return discoveryService.swipe(user.id, targetId, action);
     },
-    onSuccess: (result) => {
+    onSuccess: (result, { targetId }) => {
+      // Retire immédiatement le profil swipé de tous les decks en cache. Le
+      // serveur l'exclut déjà des prochaines recherches, mais le cache encore
+      // chaud le ferait « rebondir » au retour sur Découverte (ex. après un
+      // like/message depuis la fiche, qui renvoie sur /discover). On évite ainsi
+      // la régression « on retombe sur le profil qu'on vient de swiper ». Il
+      // pourra ressortir un autre jour — pas dans l'immédiat.
+      queryClient.setQueriesData<DiscoveryProfile[]>(
+        { queryKey: ["discovery"] },
+        (old) =>
+          Array.isArray(old) ? old.filter((p) => p.id !== targetId) : old,
+      );
       // Un swipe consomme du quota et alimente « Mes favoris ».
       queryClient.invalidateQueries({ queryKey: ["entitlements"] });
       queryClient.invalidateQueries({ queryKey: ["favorites"] });
