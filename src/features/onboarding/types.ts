@@ -9,18 +9,23 @@ export type WantsChildren = "not_wanted" | "wants" | "has_children";
 
 /** Brouillon d'onboarding (persisté localement le temps du parcours). */
 export interface OnboardingData {
-  /** Prénom réel — visible par les autres membres (port du store mobile). */
-  firstName: string;
-  /** Nom de famille réel — privé, sert à la vérification d'identité (KYC). */
-  lastName: string;
+  /** Prénom réel, public — écrit dans `first_name`. */
+  displayName: string;
+  /** Nom de famille réel, privé mais REQUIS (KYC) — écrit dans `last_name`. */
+  privateName: string;
   gender: Gender | null;
   lookingFor: LookingFor | null;
   birthDate: string | null; // yyyy-mm-dd
   country: string | null; // libellé pays (profiles.country est du texte)
   city: string | null;
-  /** Coordonnées capturées via la géolocalisation navigateur (proximité). */
-  latitude: number | null;
-  longitude: number | null;
+  /** Taille en centimètres (`height_cm`, 100–250). */
+  heightCm: number | null;
+  /** Métier libre (`profession`). */
+  profession: string;
+  /** Catalogues (FK) — ids des tables de référence. */
+  educationLevelId: string | null;
+  religionId: string | null;
+  relationshipGoalId: string | null;
   bio: string;
   smoking: Smoking | null;
   drinking: Drinking | null;
@@ -28,20 +33,22 @@ export interface OnboardingData {
   hasPets: HasPets | null;
   wantsChildren: WantsChildren | null;
   interestIds: string[];
-  /** URLs publiques des photos déjà téléversées pendant le parcours. */
-  photos: string[];
+  languageIds: string[];
 }
 
 export const EMPTY_ONBOARDING: OnboardingData = {
-  firstName: "",
-  lastName: "",
+  displayName: "",
+  privateName: "",
   gender: null,
   lookingFor: null,
   birthDate: null,
   country: null,
   city: null,
-  latitude: null,
-  longitude: null,
+  heightCm: null,
+  profession: "",
+  educationLevelId: null,
+  religionId: null,
+  relationshipGoalId: null,
   bio: "",
   smoking: null,
   drinking: null,
@@ -49,14 +56,12 @@ export const EMPTY_ONBOARDING: OnboardingData = {
   hasPets: null,
   wantsChildren: null,
   interestIds: [],
-  photos: [],
+  languageIds: [],
 };
 
-/** Règles de validation — parité stricte avec les écrans mobiles. */
-export const MIN_NAME = 2; // NameScreen : firstName/lastName ≥ 2
-export const MIN_AGE = 18; // BirthdayScreen
-export const MIN_INTERESTS = 3; // profile/types MIN_INTERESTS
-export const MIN_BIO = 20; // BioScreen MIN_BIO_LENGTH
-export const MAX_BIO = 300; // BioScreen MAX_BIO_LENGTH
-export const MIN_PHOTOS = 2; // UploadPhotosScreen MIN_PHOTOS
-export const MAX_PHOTOS = 6; // UploadPhotosScreen SLOT_COUNT
+export const MIN_INTERESTS = 3;
+export const MIN_LANGUAGES = 1;
+export const MIN_BIO = 1;
+export const HEIGHT_MIN = 140;
+export const HEIGHT_MAX = 220;
+export const HEIGHT_DEFAULT = 170;

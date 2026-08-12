@@ -1,12 +1,6 @@
-/**
- * Types de la Découverte — port de `modules/discovery/types/discovery.ts`
- * (mobile, source de vérité). Le backend Supabase (`search_profiles`) est
- * partagé : ces formes reflètent 1:1 les lignes RPC normalisées.
- */
-
 export type SwipeAction = "like" | "pass" | "super_like";
 
-/** Une carte du deck, telle que renvoyée par la RPC `search_profiles`. */
+/** Une carte du deck Découverte, telle que renvoyée par la RPC `search_profiles`. */
 export interface DiscoveryProfile {
   id: string;
   firstName: string;
@@ -19,16 +13,16 @@ export interface DiscoveryProfile {
   distanceKm: number | null;
   compatibility: number;
   interestNames: string[];
-  /** Dernier signe de vie (heartbeat) — complété en direct par la présence. */
+  /** Dernier signe de vie (heartbeat) — complété par la présence Realtime. */
   lastActiveAt: string | null;
 }
 
-/** Chips au-dessus du deck — mappées sur des drapeaux RPC, pas un filtrage client. */
+/** Chips au-dessus du deck — mappés sur des flags RPC, pas de filtrage client. */
 export type DiscoveryFeedMode = "all" | "new" | "online";
 
 /**
  * Périmètre géographique des rencontres — le cœur du produit est la diaspora :
- *   · 'international' : uniquement des profils vivant dans un AUTRE pays (défaut) ;
+ *   · 'international' : profils vivant dans un AUTRE pays (défaut) ;
  *   · 'country'       : uniquement les profils d'un pays précis ;
  *   · 'all'           : le monde entier, sans restriction.
  */
@@ -42,8 +36,10 @@ export interface DiscoveryFilters {
   country: string | null;
   verifiedOnly: boolean;
   mode: DiscoveryFeedMode;
-  /** Ids de la table interests ; vide = pas de filtre. */
+  /** Ids de la table `interests` ; vide = pas de filtre. */
   interestIds?: string[];
+  /** Distance max en km ; au-delà du plafond = illimité (non transmis). */
+  maxDistanceKm?: number;
 }
 
 /** Ligne du sélecteur « pays précis » (RPC get_discovery_countries). */

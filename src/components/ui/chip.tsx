@@ -1,63 +1,42 @@
-"use client";
-
-import { type ReactNode } from "react";
-import { m } from "framer-motion";
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef, type HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
-import { useHaptics } from "@/hooks/use-haptics";
-
-interface ChipProps {
-  label: string;
-  selected?: boolean;
-  onClick?: () => void;
-  size?: "sm" | "md";
-  icon?: ReactNode;
-  /** Rôle sémantique : bouton (défaut) ou simple étiquette non cliquable. */
-  as?: "button" | "span";
-  className?: string;
-}
 
 /**
- * Pastille sélectionnable — port de `Chip` (mobile). Dégradé signature quand
- * sélectionnée, verre quand au repos. Utilisée pour les intérêts, filtres, tags.
+ * Puce (« chip ») pour les centres d'intérêt et tags. Trois tons reprenant les
+ * maquettes : plein dégradé (sélectionné), doux (lavande translucide) et verre
+ * (sur photo sombre).
  */
-export function Chip({
-  label,
-  selected = false,
-  onClick,
-  size = "md",
-  icon,
-  as = "button",
-  className,
-}: ChipProps) {
-  const haptic = useHaptics();
-  const pad = size === "sm" ? "px-3.5 py-2" : "px-4 py-2.5";
-  const Comp = as === "button" ? m.button : m.span;
+const chipVariants = cva(
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-[var(--radius-pill)] font-semibold transition-colors select-none",
+  {
+    variants: {
+      tone: {
+        solid: "gradient-signature text-white",
+        soft: "bg-accent/15 text-primary",
+        glass: "border border-white/25 bg-white/15 text-white backdrop-blur-md",
+        outline: "border border-border text-muted-foreground",
+      },
+      size: {
+        sm: "px-3 py-1 text-xs",
+        md: "px-3.5 py-1.5 text-[0.8rem]",
+      },
+    },
+    defaultVariants: { tone: "soft", size: "md" },
+  },
+);
 
-  return (
-    <Comp
-      type={as === "button" ? "button" : undefined}
-      whileTap={onClick ? { scale: 0.95 } : undefined}
-      aria-pressed={as === "button" ? selected : undefined}
-      onClick={
-        onClick
-          ? () => {
-              haptic("light");
-              onClick();
-            }
-          : undefined
-      }
-      className={cn(
-        "font-display inline-flex items-center gap-1.5 rounded-full text-[11.5px] transition-colors",
-        pad,
-        selected
-          ? "gradient-signature text-white shadow-[0_4px_10px_rgba(106,79,192,0.28)]"
-          : "border-border/70 bg-card/45 text-foreground border-[1.5px] font-medium",
-        className,
-      )}
-    >
-      {icon}
-      <span className={selected ? "font-bold" : "font-medium"}>{label}</span>
-    </Comp>
-  );
-}
+export interface ChipProps
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof chipVariants> {}
+
+export const Chip = forwardRef<HTMLSpanElement, ChipProps>(
+  ({ className, tone, size, ...props }, ref) => (
+    <span
+      ref={ref}
+      className={cn(chipVariants({ tone, size }), className)}
+      {...props}
+    />
+  ),
+);
+Chip.displayName = "Chip";

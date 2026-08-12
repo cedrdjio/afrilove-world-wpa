@@ -74,8 +74,8 @@
   --background-elevated: #2a1f40;
   --foreground: #f5f0fc;
   --muted: #3a2c52;
-  --muted-foreground: #b9afd0;
-  --subtle-foreground: #9188a8;
+  --muted-foreground: #c6bce0;
+  --subtle-foreground: #a99fc4;
 
   --card: #2a1f40;
   --card-foreground: #f5f0fc;
@@ -247,3 +247,74 @@
     display: none;
   }
 }
+
+/* ---- Curseurs (filtres) ---- */
+@layer components {
+  .af-range {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  /* Piste — remplie via --af-fill (curseur simple). */
+  .af-range::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      var(--accent) 0%,
+      var(--primary) var(--af-fill, 0%),
+      color-mix(in srgb, var(--accent) 22%, transparent) var(--af-fill, 0%)
+    );
+  }
+  .af-range::-moz-range-track {
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .af-range::-moz-range-progress {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--primary);
+  }
+  /* Variante « nue » (double curseur) : piste transparente, dessinée à part. */
+  .af-range--bare::-webkit-slider-runnable-track {
+    background: transparent;
+  }
+  .af-range--bare::-moz-range-track {
+    background: transparent;
+  }
+  .af-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    pointer-events: auto;
+    margin-top: -8px;
+    height: 22px;
+    width: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--primary);
+    box-shadow: 0 3px 10px rgba(106, 79, 192, 0.4);
+  }
+  .af-range::-moz-range-thumb {
+    pointer-events: auto;
+    height: 22px;
+    width: 22px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--primary);
+    box-shadow: 0 3px 10px rgba(106, 79, 192, 0.4);
+  }
+  .af-range:focus-visible::-webkit-slider-thumb {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* ============================================================
+   Splash de démarrage (boot splash)
+   Le CSS du splash est désormais INLINE dans le layout (constante
+   SPLASH_CSS) afin d'être appliqué dès le 1er octet, sans requête de
+   feuille de style séparée → aucun flash d'écran « brut ». Une garde
+   de session (attribut data-splash="seen") empêche son réaffichage
+   entre les pages. Voir src/app/layout.tsx.
+   ============================================================ */

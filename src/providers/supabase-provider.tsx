@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { createClient } from "@/services/supabase/client";
+import { db } from "@/services/supabase/browser";
 
 /** Type du client dérivé de la factory — évite les soucis d'arité générique. */
 type TypedClient = ReturnType<typeof createClient>;
@@ -13,7 +14,9 @@ const SupabaseContext = createContext<TypedClient | null>(null);
  * (Aucune logique d'auth ici — Sprint 00.)
  */
 export function SupabaseProvider({ children }: { children: ReactNode }) {
-  const client = useMemo(() => createClient(), []);
+  // Même instance que le singleton `db()` utilisé par les services : une seule
+  // socket Realtime partagée entre les composants et la couche d'accès.
+  const client = useMemo(() => db(), []);
   return (
     <SupabaseContext.Provider value={client}>
       {children}

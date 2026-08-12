@@ -1,62 +1,90 @@
 import Image from "next/image";
 
 import { cn } from "@/lib/utils";
-import {
-  PhotoPlaceholder,
-  photoSeedFromString,
-} from "@/components/ui/photo-placeholder";
+import { initials } from "@/utils/format";
 
-interface AvatarProps {
-  src?: string | null;
-  /** Graine du placeholder quand `src` est absent (id ou nom du membre). */
-  seed?: string;
-  size?: number;
-  ringColor?: string;
-  ringWidth?: number;
-  alt?: string;
-  className?: string;
-}
-
-/** Avatar circulaire — port de `Avatar` (mobile). Photo Supabase ou placeholder. */
+/**
+ * Avatar photo (rond ou arrondi) avec pastille de présence optionnelle et
+ * anneau dégradé « nouveau match ». Utilise `next/image` pour l'optimisation.
+ * Quand `src` est absent (photo non renseignée), affiche les initiales sur un
+ * dégradé signature.
+ */
 export function Avatar({
   src,
-  seed = "",
-  size = 52,
-  ringColor,
-  ringWidth = 2.5,
-  alt = "",
+  alt,
+  size = 48,
+  rounded = "full",
+  ring = false,
+  online,
   className,
-}: AvatarProps) {
-  return (
-    <div
+}: {
+  src: string | null | undefined;
+  alt: string;
+  size?: number;
+  rounded?: "full" | "lg";
+  ring?: boolean;
+  online?: boolean;
+  className?: string;
+}) {
+  const radius =
+    rounded === "full" ? "rounded-full" : "rounded-[var(--radius-md)]";
+
+  const img = src ? (
+    <Image
+      src={src}
+      alt={alt}
+      width={size}
+      height={size}
+      className={cn("size-full object-cover", radius)}
+      style={{ objectPosition: "50% 20%" }}
+    />
+  ) : (
+    <span
       className={cn(
-        "relative shrink-0 overflow-hidden rounded-full",
-        className,
+        "gradient-signature grid size-full place-items-center font-bold text-white",
+        radius,
       )}
-      style={{
-        width: size,
-        height: size,
-        borderWidth: ringColor ? ringWidth : 0,
-        borderStyle: ringColor ? "solid" : undefined,
-        borderColor: ringColor,
-      }}
+      style={{ fontSize: Math.max(11, size * 0.36) }}
+      aria-label={alt}
     >
-      {src ? (
-        <Image
-          src={src}
-          alt={alt}
-          fill
-          sizes={`${size}px`}
-          className="object-cover"
-        />
+      {initials(alt)}
+    </span>
+  );
+
+  return (
+    <span
+      className={cn("relative inline-block shrink-0", className)}
+      style={{ width: size, height: size }}
+    >
+      {ring ? (
+        <span
+          className={cn("gradient-signature block size-full p-[2.5px]", radius)}
+        >
+          <span
+            className={cn(
+              "bg-card block size-full overflow-hidden p-[2px]",
+              radius,
+            )}
+          >
+            {img}
+          </span>
+        </span>
       ) : (
-        <PhotoPlaceholder
-          seed={photoSeedFromString(seed)}
-          showIcon
-          iconSize={Math.round(size * 0.42)}
-          className="h-full w-full"
+        <span className={cn("block size-full overflow-hidden", radius)}>
+          {img}
+        </span>
+      )}
+
+      {online != null && (
+        <span
+          aria-label={online ? "En ligne" : "Hors ligne"}
+          className={cn(
+            "border-card absolute -right-0.5 -bottom-0.5 block rounded-full border-2",
+            online ? "bg-success" : "bg-subtle-foreground",
+          )}
+          style={{ width: size * 0.28, height: size * 0.28 }}
         />
       )}
-    </div>
+    </span>
   );
 }

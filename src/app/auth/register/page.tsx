@@ -8,6 +8,7 @@ import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 
 import { AuthScreen } from "@/features/auth/components/auth-screen";
+import { GoogleButton } from "@/features/auth/components/google-button";
 import { registerSchema, type RegisterValues } from "@/features/auth/schema";
 import { authErrorMessage, signUpWithPassword } from "@/features/auth/service";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ export default function RegisterPage() {
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      firstName: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -53,15 +55,14 @@ export default function RegisterPage() {
       return;
     }
     haptic("success");
-    // Session immédiate (confirmation désactivée) → résolution → onboarding.
+    const email = values.email.trim().toLowerCase();
+    // Session immédiate (confirmation désactivée) → onboarding directement.
     if (data.session) {
-      router.replace(ROUTES.authResolving);
+      router.replace(ROUTES.onboarding);
       return;
     }
-    // Sinon : confirmation requise → écran de saisie du code (OTP) + lien.
-    // Parité mobile : on ne dépend plus du seul retour du lien navigateur.
-    const email = values.email.trim().toLowerCase();
-    router.push(`${ROUTES.verifyEmail}?email=${encodeURIComponent(email)}`);
+    // Sinon : un code à 6 chiffres a été envoyé → saisie in-app (pas de lien).
+    router.replace(`${ROUTES.verifyOtp}?email=${encodeURIComponent(email)}`);
   }
 
   return (
@@ -86,6 +87,20 @@ export default function RegisterPage() {
         noValidate
         className="flex flex-1 flex-col gap-5"
       >
+        <Field
+          label="Prénom"
+          htmlFor="firstName"
+          error={errors.firstName?.message}
+        >
+          <Input
+            id="firstName"
+            autoComplete="given-name"
+            placeholder="Votre prénom"
+            invalid={!!errors.firstName}
+            {...register("firstName")}
+          />
+        </Field>
+
         <Field
           label="Adresse e-mail"
           htmlFor="email"
@@ -182,6 +197,14 @@ export default function RegisterPage() {
         >
           {pending ? "Création…" : "Créer mon compte"}
         </Button>
+
+        <div className="flex items-center gap-3">
+          <span className="bg-border h-px flex-1" />
+          <span className="text-muted-foreground text-xs font-medium">ou</span>
+          <span className="bg-border h-px flex-1" />
+        </div>
+
+        <GoogleButton next={ROUTES.onboarding} />
       </form>
     </AuthScreen>
   );

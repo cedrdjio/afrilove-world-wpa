@@ -1,53 +1,56 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { m, type HTMLMotionProps } from "framer-motion";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
+import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils";
-import { useHaptics } from "@/hooks/use-haptics";
 
-type IconButtonProps = Omit<HTMLMotionProps<"button">, "className" | "ref"> & {
-  children: ReactNode;
-  size?: number;
-  /** Affiche une pastille de notification en haut à droite. */
-  showDot?: boolean;
-  "aria-label": string;
-  className?: string;
-};
+/**
+ * Bouton-icône réutilisable (barres d'action, en-têtes). Les tons « glass » et
+ * « glassDark » reprennent les surfaces translucides des maquettes claires et
+ * sombres.
+ */
+const iconButtonVariants = cva(
+  "inline-flex items-center justify-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      tone: {
+        glass: "glass text-primary hover:brightness-105",
+        glassDark:
+          "border border-white/20 bg-white/10 text-white backdrop-blur-lg hover:bg-white/15",
+        soft: "bg-accent/15 text-primary hover:bg-accent/25",
+        gradient: "gradient-signature text-white shadow-brand",
+        ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
+      },
+      shape: { round: "rounded-full", square: "rounded-[var(--radius-md)]" },
+      size: {
+        sm: "size-9",
+        md: "size-11",
+        lg: "size-14",
+      },
+    },
+    defaultVariants: { tone: "glass", shape: "square", size: "md" },
+  },
+);
 
-/** Bouton icône « verre » carré-arrondi — port de `IconButton` (mobile). */
-export function IconButton({
-  children,
-  size = 44,
-  showDot = false,
-  onClick,
-  className,
-  ...props
-}: IconButtonProps) {
-  const haptic = useHaptics();
-
-  return (
-    <m.button
-      type="button"
-      whileTap={{ scale: 0.92 }}
-      onClick={(e) => {
-        haptic("light");
-        onClick?.(e);
-      }}
-      style={{ width: size, height: size }}
-      className={cn(
-        "glass text-foreground focus-visible:ring-ring focus-visible:ring-offset-background relative inline-flex items-center justify-center rounded-[15px] transition-[filter] hover:brightness-105 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      {showDot ? (
-        <span
-          aria-hidden
-          className="bg-primary border-background absolute top-2 right-2 size-[9px] rounded-full border-2"
-        />
-      ) : null}
-    </m.button>
-  );
+export interface IconButtonProps
+  extends
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof iconButtonVariants> {
+  asChild?: boolean;
 }
+
+export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ className, tone, shape, size, asChild = false, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
+    return (
+      <Comp
+        ref={ref}
+        className={cn(iconButtonVariants({ tone, shape, size }), className)}
+        {...props}
+      />
+    );
+  },
+);
+IconButton.displayName = "IconButton";

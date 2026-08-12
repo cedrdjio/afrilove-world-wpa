@@ -1,12 +1,9 @@
-import { type createClient } from "@/services/supabase/client";
-
-type Client = ReturnType<typeof createClient>;
+import { db } from "@/services/supabase/browser";
 
 /**
- * Favoris = signets. Rien à voir avec un like : on met de côté un profil
- * croisé dans Découvrir pour le retrouver plus tard (onglet Favoris de Mes
- * Matches). Table `profile_favorites`, invisible pour la personne mise en
- * favori. 10 favoris gratuits, illimités en Premium.
+ * Favoris = signets. Rien à voir avec un like : on met de côté un profil pour
+ * le retrouver plus tard, invisible pour la personne mise en favori. Table
+ * `profile_favorites`. 10 favoris gratuits, illimités en Premium. Porté mobile.
  */
 export interface SavedFavorite {
   id: string;
@@ -17,10 +14,8 @@ export interface SavedFavorite {
   savedAt: string;
 }
 
-export async function fetchSavedFavorites(
-  supabase: Client,
-): Promise<SavedFavorite[]> {
-  const { data, error } = await supabase.rpc("get_saved_favorites");
+async function fetchSavedFavorites(): Promise<SavedFavorite[]> {
+  const { data, error } = await db().rpc("get_saved_favorites");
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.profile_id,
@@ -32,28 +27,27 @@ export async function fetchSavedFavorites(
   }));
 }
 
-export async function fetchFavoriteIds(supabase: Client): Promise<string[]> {
-  const { data, error } = await supabase.rpc("get_my_favorite_ids");
+async function fetchFavoriteIds(): Promise<string[]> {
+  const { data, error } = await db().rpc("get_my_favorite_ids");
   if (error) throw error;
   return (data ?? []).map((row) => row.target_id);
 }
 
-export async function addFavorite(
-  supabase: Client,
-  targetId: string,
-): Promise<void> {
-  const { error } = await supabase.rpc("add_favorite", {
+async function addFavorite(targetId: string): Promise<void> {
+  const { error } = await db().rpc("add_favorite", { p_target_id: targetId });
+  if (error) throw error;
+}
+
+async function removeFavorite(targetId: string): Promise<void> {
+  const { error } = await db().rpc("remove_favorite", {
     p_target_id: targetId,
   });
   if (error) throw error;
 }
 
-export async function removeFavorite(
-  supabase: Client,
-  targetId: string,
-): Promise<void> {
-  const { error } = await supabase.rpc("remove_favorite", {
-    p_target_id: targetId,
-  });
-  if (error) throw error;
-}
+export const favoritesService = {
+  fetchSavedFavorites,
+  fetchFavoriteIds,
+  addFavorite,
+  removeFavorite,
+};

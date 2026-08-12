@@ -5,26 +5,21 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, m } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { ROUTES } from "@/constants/routes";
-import { mapToAppError, type AppError } from "@/lib/errors";
 import { useHaptics } from "@/hooks/use-haptics";
 import { useAuth } from "@/providers/auth-provider";
 import { useSupabase } from "@/providers/supabase-provider";
 import {
-  fetchCountries,
   fetchInterests,
   persistOnboarding,
 } from "@/features/onboarding/service";
 import { useOnboardingStore } from "@/features/onboarding/store";
 import {
-  MIN_AGE,
-  MIN_BIO,
   MIN_INTERESTS,
-  MIN_NAME,
-  MIN_PHOTOS,
   type OnboardingData,
 } from "@/features/onboarding/types";
 import {
@@ -34,108 +29,84 @@ import {
   InterestsStep,
   LifestyleStep,
   LookingForStep,
+  NameStep,
 } from "./steps";
-import { NameStep } from "./name-step";
 import { PhotosStep } from "./photos-step";
-import { LocationStep } from "./location-step";
-import { NotificationStep } from "./notification-step";
-import { CarouselStep } from "./carousel-step";
-import { FinishStep } from "./finish-step";
 import { OnboardingProgress } from "./onboarding-progress";
+
+interface StepDef {
+  key: string;
+  title: string;
+  subtitle?: string;
+  /** Étape facultative : affiche un lien « Passer ». */
+  optional?: boolean;
+  valid: (d: OnboardingData) => boolean;
+}
 
 function isAdult(iso: string | null): boolean {
   if (!iso) return false;
-  const threshold = new Date();
-  threshold.setFullYear(threshold.getFullYear() - MIN_AGE);
-  return new Date(iso).getTime() <= threshold.getTime();
+  const eighteen = new Date();
+  eighteen.setFullYear(eighteen.getFullYear() - 18);
+  return new Date(iso).getTime() <= eighteen.getTime();
 }
 
-type StepKind = "carousel" | "content" | "permission" | "finish";
-
-interface StepDef {
-  id: string;
-  kind: StepKind;
-  title?: string;
-  subtitle?: string;
-  valid?: (d: OnboardingData) => boolean;
-}
-
-/**
- * Ordre UX fidèle au mobile : carousel → 8 étapes de contenu (numérotées) →
- * 2 permissions (skippables) → écran de fin. Les étapes de contenu ont une
- * règle de validation stricte (parité des `isValid` mobiles) ; carousel,
- * permissions et fin gèrent leurs propres actions.
- */
+// Parcours en 8 écrans groupés (parité jalon). Les champs secondaires
+// (localisation, taille, métier, études, religion, objectif, langues) ne sont
+// plus demandés à l'inscription : ils s'ajoutent ensuite depuis « Modifier mon
+// profil ». Le mode de vie regroupe ses 5 questions sur un seul écran.
 const STEPS: StepDef[] = [
-  { id: "carousel", kind: "carousel" },
   {
-    id: "name",
-    kind: "content",
-    title: "Ton identité",
+    key: "name",
+    title: "Votre identité",
     subtitle:
-      "Ton prénom sera visible par les autres membres. Ton nom reste privé.",
+      "Votre prénom sera visible par les autres membres. Votre nom reste privé et sert à vérifier votre identité.",
     valid: (d) =>
-      d.firstName.trim().length >= MIN_NAME &&
-      d.lastName.trim().length >= MIN_NAME,
+      d.displayName.trim().length >= 2 && d.privateName.trim().length >= 2,
   },
+  { key: "gender", title: "Vous êtes…", valid: (d) => !!d.gender },
   {
-    id: "gender",
-    kind: "content",
-    title: "Je suis…",
-    subtitle: "Personnalisez votre expérience.",
-    valid: (d) => !!d.gender,
-  },
-  {
-    id: "birthDate",
-    kind: "content",
+    key: "birthdate",
     title: "Votre date de naissance",
-    subtitle: "Vous devez avoir au moins 18 ans pour utiliser AfriLove World.",
+    subtitle: "Vous devez avoir au moins 18 ans. Seul votre âge sera affiché.",
     valid: (d) => isAdult(d.birthDate),
   },
   {
-    id: "lookingFor",
-    kind: "content",
-    title: "Je recherche…",
-    subtitle: "Qui souhaitez-vous rencontrer sur AfriLove World ?",
+    key: "lookingFor",
+    title: "Vous recherchez…",
+    subtitle: "Les profils que vous verrez dans la découverte.",
     valid: (d) => !!d.lookingFor,
   },
   {
-    id: "interests",
-    kind: "content",
-    title: "Vos passions",
-    subtitle: `Sélectionnez au moins ${MIN_INTERESTS} centres d’intérêt.`,
+    key: "interests",
+    title: "Vos centres d’intérêt",
+    subtitle: `Sélectionnez au moins ${MIN_INTERESTS} passions.`,
     valid: (d) => d.interestIds.length >= MIN_INTERESTS,
   },
   {
-    id: "bio",
-    kind: "content",
-    title: "Parlez-nous de vous",
-    subtitle: "Une bonne bio attire 3× plus de matches. Soyez authentique.",
-    valid: (d) => d.bio.trim().length >= MIN_BIO,
+    key: "bio",
+    title: "Présentez-vous",
+    subtitle: "Quelques mots sincères font toute la différence.",
+    valid: (d) => d.bio.trim().length > 0,
   },
   {
-    id: "photos",
-    kind: "content",
-    title: "Vos photos",
-    subtitle: "Soyez authentique. 3 photos = 4× plus de visibilité.",
-    valid: (d) => d.photos.length >= MIN_PHOTOS,
+    key: "photos",
+    title: "Ajoutez vos photos",
+    subtitle: "Une première photo donne 4× plus de visibilité.",
+    valid: () => true,
   },
   {
-    id: "lifestyle",
-    kind: "content",
+    key: "lifestyle",
     title: "Votre mode de vie",
-    subtitle: "Aidez-nous à mieux vous faire matcher.",
+    subtitle: "Pour des rencontres qui vous ressemblent.",
     valid: (d) =>
-      !!(d.smoking && d.drinking && d.gymHabit && d.hasPets && d.wantsChildren),
+      !!d.smoking &&
+      !!d.drinking &&
+      !!d.gymHabit &&
+      !!d.hasPets &&
+      !!d.wantsChildren,
   },
-  { id: "location", kind: "permission" },
-  { id: "notifications", kind: "permission" },
-  { id: "finish", kind: "finish" },
 ];
 
-const CONTENT_STEP_IDS = STEPS.filter((s) => s.kind === "content").map(
-  (s) => s.id,
-);
 const EASE = [0.23, 1, 0.32, 1] as const;
 
 export function OnboardingWizard() {
@@ -146,23 +117,38 @@ export function OnboardingWizard() {
   const { data, step, ownerId, reset, patch, setStep, clear } =
     useOnboardingStore();
   const [finishing, setFinishing] = useState(false);
-  const [finishError, setFinishError] = useState<AppError | null>(null);
+  const [, setPhotoCount] = useState(0);
 
+  const hour = 1000 * 60 * 60;
   const interestsQuery = useQuery({
     queryKey: ["interests"],
     queryFn: () => fetchInterests(supabase),
-    staleTime: 1000 * 60 * 60,
-  });
-  const countriesQuery = useQuery({
-    queryKey: ["countries"],
-    queryFn: () => fetchCountries(supabase),
-    staleTime: 1000 * 60 * 60,
+    staleTime: hour,
   });
 
   // Attache le brouillon au compte courant (remise à zéro si autre utilisateur).
   useEffect(() => {
     if (user && ownerId !== user.id) reset(user.id);
   }, [user, ownerId, reset]);
+
+  // Pré-remplit prénom/nom depuis les métadonnées d'inscription (saisie manuelle
+  // ou Google), pour ne pas les redemander. On ne touche jamais à une saisie
+  // déjà présente. `patch` (store zustand) n'est pas un setState React.
+  useEffect(() => {
+    if (!user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+    const first =
+      str(meta.first_name) ||
+      str(meta.given_name) ||
+      str(meta.name).split(" ")[0] ||
+      "";
+    const last = str(meta.last_name) || str(meta.family_name);
+    const fill: Partial<OnboardingData> = {};
+    if (first && !data.displayName) fill.displayName = first;
+    if (last && !data.privateName) fill.privateName = last;
+    if (Object.keys(fill).length > 0) patch(fill);
+  }, [user, data.displayName, data.privateName, patch]);
 
   // Onboarding déjà terminé → app.
   useEffect(() => {
@@ -177,13 +163,29 @@ export function OnboardingWizard() {
     );
   }
 
-  const current = STEPS[Math.min(step, STEPS.length - 1)]!;
-  const isContent = current.kind === "content";
-  const canProceed = current.valid ? current.valid(data) : true;
+  const current = STEPS[step]!;
+  const isLast = step === STEPS.length - 1;
+  const canProceed = current.valid(data);
 
-  function goNext() {
-    haptic("light");
-    setStep(Math.min(step + 1, STEPS.length - 1));
+  async function next() {
+    if (!isLast) {
+      haptic("light");
+      setStep(step + 1);
+      return;
+    }
+    if (!user) return;
+    setFinishing(true);
+    try {
+      await persistOnboarding(supabase, user.id, data);
+      await refreshProfile();
+      clear();
+      haptic("success");
+      router.replace(ROUTES.discover);
+    } catch {
+      setFinishing(false);
+      haptic("error");
+      toast.error("Impossible d’enregistrer votre profil. Réessayez.");
+    }
   }
 
   function back() {
@@ -195,152 +197,118 @@ export function OnboardingWizard() {
     setStep(step - 1);
   }
 
-  async function finish() {
-    if (!user) return;
-    setFinishing(true);
-    setFinishError(null);
-    try {
-      await persistOnboarding(supabase, user.id, data);
-      await refreshProfile();
-      clear();
-      haptic("success");
-      // Parité mobile (FinishScreen) : on passe par la résolution, qui relit
-      // le profil (profile_completed recalculé par trigger) et route ensuite.
-      router.replace(ROUTES.authResolving);
-    } catch (error) {
-      setFinishing(false);
-      setFinishError(mapToAppError(error));
-      haptic("error");
-    }
-  }
-
-  const catalogPending =
-    (current.id === "interests" && interestsQuery.isPending) ||
-    (current.id === "location" && countriesQuery.isPending);
-
-  const contentIndex = CONTENT_STEP_IDS.indexOf(current.id);
-  const showBack = current.kind !== "finish";
+  const catalogsPending =
+    current.key === "interests" && interestsQuery.isPending;
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col px-6 pt-4 pb-6">
-      <header className="flex h-10 items-center gap-3">
-        {showBack ? (
-          <button
-            type="button"
-            onClick={back}
-            aria-label="Retour"
-            className="text-muted-foreground hover:text-foreground -ml-2 grid size-10 shrink-0 place-items-center rounded-full transition-colors"
-          >
-            <ChevronLeft className="size-6" aria-hidden />
-          </button>
-        ) : null}
-        {isContent && contentIndex >= 0 ? (
-          <OnboardingProgress
-            current={contentIndex}
-            total={CONTENT_STEP_IDS.length}
-          />
-        ) : null}
+    <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col overflow-x-hidden px-6 pt-4 pb-6">
+      <header className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={back}
+          aria-label="Retour"
+          className="text-muted-foreground hover:text-foreground -ml-2 grid size-10 place-items-center rounded-full transition-colors"
+        >
+          <ChevronLeft className="size-6" aria-hidden />
+        </button>
+        <OnboardingProgress current={step} total={STEPS.length} />
       </header>
 
-      <div className="mt-6 flex flex-1 flex-col overflow-hidden">
-        {isContent ? (
-          <>
-            <h1 className="text-[1.6rem] leading-tight font-extrabold tracking-tight text-balance">
-              {current.title}
-            </h1>
-            {current.subtitle ? (
-              <p className="text-muted-foreground mt-2 text-[0.95rem] leading-relaxed">
-                {current.subtitle}
-              </p>
-            ) : null}
-          </>
+      <div className="mt-8 flex flex-1 flex-col overflow-hidden">
+        <h1 className="text-[1.6rem] leading-tight font-extrabold tracking-tight text-balance">
+          {current.title}
+        </h1>
+        {current.subtitle ? (
+          <p className="text-muted-foreground mt-2 text-[0.95rem] leading-relaxed">
+            {current.subtitle}
+          </p>
         ) : null}
 
-        <div className="-mx-1 mt-7 flex flex-1 flex-col overflow-y-auto px-1">
+        <div className="mt-7 flex-1 overflow-x-hidden overflow-y-auto px-1">
           <AnimatePresence mode="wait">
             <m.div
-              key={current.id}
+              key={current.key}
               initial={{ opacity: 0, x: 16 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.28, ease: EASE }}
-              className="flex flex-1 flex-col"
             >
-              {catalogPending ? (
-                <div className="grid flex-1 place-items-center py-16">
+              {catalogsPending ? (
+                <div className="grid place-items-center py-16">
                   <Spinner />
                 </div>
               ) : (
-                renderStepBody()
+                <StepBody
+                  stepKey={current.key}
+                  data={data}
+                  patch={patch}
+                  interests={interestsQuery.data ?? []}
+                  onPhotoCount={setPhotoCount}
+                />
               )}
             </m.div>
           </AnimatePresence>
         </div>
       </div>
 
-      {isContent ? (
-        <div className="pt-4">
-          <Button size="lg" block disabled={!canProceed} onClick={goNext}>
-            Continuer
-          </Button>
-        </div>
-      ) : null}
+      <div className="flex flex-col gap-3 pt-4">
+        <Button
+          size="lg"
+          block
+          disabled={!canProceed || finishing}
+          onClick={next}
+        >
+          {finishing
+            ? "Enregistrement…"
+            : isLast
+              ? "Terminer & découvrir"
+              : "Continuer"}
+        </Button>
+        {current.optional && !isLast ? (
+          <button
+            type="button"
+            onClick={next}
+            className="text-subtle-foreground hover:text-foreground text-center text-sm font-semibold transition-colors"
+          >
+            Passer cette étape
+          </button>
+        ) : null}
+      </div>
     </div>
   );
+}
 
-  function renderStepBody() {
-    switch (current.id) {
-      case "carousel":
-        return <CarouselStep onStart={goNext} />;
-      case "name":
-        return <NameStep data={data} patch={patch} />;
-      case "gender":
-        return <GenderStep data={data} patch={patch} />;
-      case "birthDate":
-        return <BirthDateStep data={data} patch={patch} />;
-      case "lookingFor":
-        return <LookingForStep data={data} patch={patch} />;
-      case "interests":
-        return (
-          <InterestsStep
-            data={data}
-            patch={patch}
-            interests={interestsQuery.data ?? []}
-          />
-        );
-      case "bio":
-        return <BioStep data={data} patch={patch} />;
-      case "photos":
-        return (
-          <PhotosStep
-            photos={data.photos}
-            onChange={(photos) => patch({ photos })}
-          />
-        );
-      case "lifestyle":
-        return <LifestyleStep data={data} patch={patch} />;
-      case "location":
-        return (
-          <LocationStep
-            data={data}
-            patch={patch}
-            countries={countriesQuery.data ?? []}
-            onDone={goNext}
-          />
-        );
-      case "notifications":
-        return <NotificationStep onDone={goNext} />;
-      case "finish":
-        return (
-          <FinishStep
-            firstName={data.firstName.trim()}
-            finishing={finishing}
-            error={finishError}
-            onFinish={() => void finish()}
-          />
-        );
-      default:
-        return null;
-    }
+function StepBody({
+  stepKey,
+  data,
+  patch,
+  interests,
+  onPhotoCount,
+}: {
+  stepKey: string;
+  data: OnboardingData;
+  patch: (p: Partial<OnboardingData>) => void;
+  interests: Awaited<ReturnType<typeof fetchInterests>>;
+  onPhotoCount: (n: number) => void;
+}) {
+  switch (stepKey) {
+    case "name":
+      return <NameStep data={data} patch={patch} />;
+    case "gender":
+      return <GenderStep data={data} patch={patch} />;
+    case "birthdate":
+      return <BirthDateStep data={data} patch={patch} />;
+    case "lookingFor":
+      return <LookingForStep data={data} patch={patch} />;
+    case "interests":
+      return <InterestsStep data={data} patch={patch} interests={interests} />;
+    case "bio":
+      return <BioStep data={data} patch={patch} />;
+    case "photos":
+      return <PhotosStep onCountChange={onPhotoCount} />;
+    case "lifestyle":
+      return <LifestyleStep data={data} patch={patch} />;
+    default:
+      return null;
   }
 }

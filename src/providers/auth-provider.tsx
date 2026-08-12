@@ -13,7 +13,6 @@ import {
 import { type Session, type User } from "@supabase/supabase-js";
 
 import { useSupabase } from "@/providers/supabase-provider";
-import { unregisterDevice } from "@/features/notifications/push/service";
 import { type Database } from "@/types/database";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -22,6 +21,8 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   profile: Profile | null;
+  /** Raccourci `Boolean(user)` — consommé par les hooks de données. */
+  isAuthenticated: boolean;
   /** true tant que la session initiale n'est pas résolue (évite les flashs). */
   isLoading: boolean;
   /** Recharge la ligne `profiles` (après onboarding, édition…). */
@@ -101,10 +102,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const doSignOut = useCallback(async () => {
-    // Coupe les pushes vers ce navigateur avant de fermer la session (miroir de
-    // `useLogout` mobile). Ne bloque jamais la déconnexion en cas d'échec.
-    const userId = currentUserId.current;
-    if (userId) await unregisterDevice(supabase, userId);
     await supabase.auth.signOut();
     setProfile(null);
   }, [supabase]);
@@ -114,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session,
       profile,
+      isAuthenticated: Boolean(user),
       isLoading,
       refreshProfile,
       signOut: doSignOut,

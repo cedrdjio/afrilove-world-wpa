@@ -1,27 +1,25 @@
 /**
  * Validation des numéros Mobile Money camerounais et détection de l'opérateur.
- * Port strict de `premium/payments/mobileMoney.ts` (mobile).
  *
- * Les numéros mobiles camerounais font 9 chiffres et commencent par 6 :
+ * Les numéros mobiles font 9 chiffres et commencent par 6 :
  *   MTN    → 650-654, 67x, 68x
  *   Orange → 655-659, 69x
- * On accepte les saisies avec +237 / 237 / 00237 en tête, qu'on normalise.
+ * On accepte +237 / 237 / 00237 en tête, qu'on normalise. Pur, testable —
+ * porté à l'identique depuis l'app mobile.
  */
 
 export type MobileOperator = "mtn" | "orange";
 
 export interface OperatorInfo {
   operator: MobileOperator;
-  /** Libellé affiché à l'utilisateur. */
   label: string;
-  /** Méthode transmise à CamerPay. */
   paymentMethod: "mtn_momo" | "orange_money";
 }
 
 const MTN_RE = /^6(5[0-4]|7\d|8\d)\d{6}$/;
 const ORANGE_RE = /^6(5[5-9]|9\d)\d{6}$/;
 
-/** Réduit une saisie libre au numéro local à 9 chiffres (retire +237/237/00237). */
+/** Réduit une saisie libre au numéro local à 9 chiffres. */
 export function normalizeCmPhone(raw: string): string {
   let digits = (raw ?? "").replace(/\D/g, "");
   if (digits.startsWith("00237")) digits = digits.slice(5);

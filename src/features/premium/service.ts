@@ -1,18 +1,7 @@
-import { type createClient } from "@/services/supabase/client";
-import { paymentService } from "@/features/premium/payments";
-import type {
-  CheckoutContext,
-  CheckoutInput,
-  PaymentResult,
-} from "@/features/premium/payments";
+import { db } from "@/services/supabase/browser";
 
-type Client = ReturnType<typeof createClient>;
-
-/**
- * Droits, compteurs, forfaits & paiement du compte — port de `premiumService`
- * (mobile). Lecture (compteurs, limites, « qui vous a aimé ») livrée au Jalon 8 ;
- * forfaits + achat CamerPay + déverrouillage ajoutés au Jalon 11.
- */
+import { paymentService } from "./payments";
+import type { CheckoutInput, PaymentResult } from "./payments";
 
 export interface PremiumPlan {
   key: string;
@@ -23,6 +12,7 @@ export interface PremiumPlan {
   durationDays: number;
   sortOrder: number;
 }
+
 export interface Entitlements {
   isPremium: boolean;
   premiumUntil: string | null;
@@ -55,8 +45,8 @@ export interface FavoriteProfile extends LikerProfile {
   isMatched: boolean;
 }
 
-export async function fetchPlans(supabase: Client): Promise<PremiumPlan[]> {
-  const { data, error } = await supabase
+async function fetchPlans(): Promise<PremiumPlan[]> {
+  const { data, error } = await db()
     .from("premium_plans")
     .select(
       "key, label, description, price_cents, currency, duration_days, sort_order",
@@ -75,42 +65,8 @@ export async function fetchPlans(supabase: Client): Promise<PremiumPlan[]> {
   }));
 }
 
-/**
- * Achat réel : ouvre le paiement du fournisseur actif (CamerPay) et résout une
- * issue normalisée. Le premium est accordé côté serveur par le webhook du
- * fournisseur (même noyau `grant_subscription()`) — empilement, expiration,
- * limites et gating inchangés. L'appelant route selon `outcome` ; les droits
- * sont re-fetchés sur 'succeeded'.
- */
-export async function purchasePlan(
-  supabase: Client,
-  input: CheckoutInput,
-  ctx?: CheckoutContext,
-): Promise<PaymentResult> {
-  return paymentService.checkout(supabase, input, ctx);
-}
-
-export async function fetchFavorites(
-  supabase: Client,
-): Promise<FavoriteProfile[]> {
-  const { data, error } = await supabase.rpc("get_my_favorites");
-  if (error) throw error;
-  return (data ?? []).map((row) => ({
-    id: row.profile_id,
-    firstName: row.first_name ?? "",
-    avatarUrl: row.avatar_url,
-    city: row.city,
-    isVerified: row.is_verified,
-    action: row.action as "like" | "super_like",
-    likedAt: row.liked_at,
-    isMatched: row.is_matched,
-  }));
-}
-
-export async function fetchEntitlements(
-  supabase: Client,
-): Promise<Entitlements> {
-  const { data, error } = await supabase.rpc("get_my_entitlements");
+async function fetchEntitlements(): Promise<Entitlements> {
+  const { data, error } = await db().rpc("get_my_entitlements");
   if (error) throw error;
   const row = data?.[0];
   return {
@@ -129,9 +85,33 @@ export async function fetchEntitlements(
   };
 }
 
-/** Vide pour les comptes non-premium (appliqué dans la RPC elle-même). */
-export async function fetchLikers(supabase: Client): Promise<LikerProfile[]> {
-  const { data, error } = await supabase.rpc("get_my_likers");
+/**
+ * Achat réel : ouvre le checkout du fournisseur actif (CamerPay aujourd'hui)
+ * et résout un résultat normalisé. Le premium est accordé côté serveur par le
+ * webhook du fournisseur ; l'appelant route sur `outcome`.
+ */
+async function purchasePlan(input: CheckoutInput): Promise<PaymentResult> {
+  return paymentService.checkout(input);
+}
+
+async function fetchFavorites(): Promise<FavoriteProfile[]> {
+  const { data, error } = await db().rpc("get_my_favorites");
+  if (error) throw error;
+  return (data ?? []).map((row) => ({
+    id: row.profile_id,
+    firstName: row.first_name ?? "",
+    avatarUrl: row.avatar_url,
+    city: row.city,
+    isVerified: row.is_verified,
+    action: row.action as "like" | "super_like",
+    likedAt: row.liked_at,
+    isMatched: row.is_matched,
+  }));
+}
+
+/** Vide pour les comptes non-premium (imposé par la RPC elle-même). */
+async function fetchLikers(): Promise<LikerProfile[]> {
+  const { data, error } = await db().rpc("get_my_likers");
   if (error) throw error;
   return (data ?? []).map((row) => ({
     id: row.profile_id,
@@ -143,3 +123,11 @@ export async function fetchLikers(supabase: Client): Promise<LikerProfile[]> {
     likedAt: row.liked_at,
   }));
 }
+
+export const premiumService = {
+  fetchPlans,
+  fetchEntitlements,
+  purchasePlan,
+  fetchFavorites,
+  fetchLikers,
+};

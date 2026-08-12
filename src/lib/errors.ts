@@ -5,15 +5,10 @@ import {
 } from "@supabase/supabase-js";
 
 /**
- * Normalisation d'erreurs — port fidèle de `shared/utils/errorMapping.ts`
- * (source de vérité mobile). Toute erreur Supabase / fetch / React Query est
- * ramenée à une forme `AppError` unique afin que chaque écran affiche le même
- * couple titre + message + option « réessayer » pour un type d'échec donné.
- *
- * Pur : aucun log ici (voir `logAppErrorDetails`). Le kind `session_expired`
- * est le seul qui doit déclencher une déconnexion (câblé dans le QueryProvider).
+ * Normalisation des erreurs (Supabase, fetch, React Query) en une forme
+ * unique `AppError` : chaque écran rend le même titre + message + option de
+ * réessai pour un type d'échec donné. Porté depuis l'app mobile.
  */
-
 export type AppErrorKind =
   | "no_internet"
   | "server_error"
@@ -109,11 +104,6 @@ function isAbortOrTimeout(error: Error): boolean {
   );
 }
 
-/**
- * Normalise toute erreur Supabase / fetch / React Query en `AppError`.
- * L'ordre des branches est signifiant : GoTrue enveloppe les AbortError dans
- * ses propres sous-classes, donc l'abandon/timeout doit être testé en premier.
- */
 export function mapToAppError(error: unknown): AppError {
   if (error instanceof Error && isAbortOrTimeout(error)) {
     return buildError("timeout");
@@ -121,8 +111,6 @@ export function mapToAppError(error: unknown): AppError {
 
   if (error instanceof StorageApiError) {
     const message = error.message.toLowerCase();
-    // Un refus de policy Storage ne prouve pas que la session a expiré :
-    // ne jamais forcer une déconnexion ici (boucle « session expirée »).
     if (
       message.includes("row-level security") ||
       message.includes("permission denied")
@@ -168,7 +156,6 @@ export function mapToAppError(error: unknown): AppError {
     ) {
       return buildError("invalid_email");
     }
-    // GoTrue renvoie le même code que l'OTP soit erroné ou expiré.
     if (
       code === "otp_expired" ||
       message.includes("token has expired or is invalid")
@@ -200,32 +187,4 @@ export function mapToAppError(error: unknown): AppError {
   }
 
   return buildError("unknown");
-}
-
-/**
- * Trace les détails techniques bruts (constructeur, name, message, code/status,
- * cause) à côté du kind résolu. Dev-only. À grepper dans la console navigateur
- * quand le message convivial à l'écran ne suffit pas à déboguer.
- */
-export function logAppErrorDetails(error: unknown, resolved: AppError): void {
-  if (process.env.NODE_ENV === "production") return;
-
-  const details: Record<string, unknown> = {
-    resolvedKind: resolved.kind,
-    constructor: error?.constructor?.name,
-  };
-
-  if (error instanceof Error) {
-    details.name = error.name;
-    details.message = error.message;
-    details.stack = error.stack;
-    if ("code" in error) details.code = (error as { code?: unknown }).code;
-    if ("status" in error)
-      details.status = (error as { status?: unknown }).status;
-    if ("cause" in error) details.cause = (error as { cause?: unknown }).cause;
-  } else {
-    details.raw = error;
-  }
-
-  console.error("[AppError]", details);
 }

@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 
+import { db } from "@/services/supabase/browser";
 import { useAuth } from "@/providers/auth-provider";
-import { useSupabase } from "@/providers/supabase-provider";
 
 interface PresenceState {
   /** Ids des membres actuellement connectés (canal Presence Realtime). */
@@ -20,23 +20,22 @@ export const usePresenceStore = create<PresenceState>((set) => ({
 /**
  * Rejoint le canal Presence partagé « online-members » : chaque onglet connecté
  * s'y déclare (key = user id) et reçoit en temps réel la liste des membres en
- * ligne. Monté une seule fois dans le shell `(app)` — les écrans lisent le
- * store. Port de `usePresenceSync` (mobile).
+ * ligne. À monter une seule fois (layout applicatif) ; les écrans lisent le
+ * store via `useIsOnline`. Porté depuis l'app mobile.
  */
 export function usePresenceSync() {
-  const supabase = useSupabase();
   const { user } = useAuth();
   const setOnlineIds = usePresenceStore((s) => s.setOnlineIds);
 
   useEffect(() => {
     if (!user?.id) return;
+    const supabase = db();
 
-    // La présence exige un topic PARTAGÉ (tout le monde dans la même salle) :
-    // en cas de remontage rapide, purger l'instance encore ouverte évite un
-    // crash à l'ajout des callbacks après subscribe().
+    // La présence exige un topic PARTAGÉ : en cas de remontage rapide une
+    // instance du canal peut traîner ; on purge avant de re-souscrire.
     for (const existing of supabase.getChannels()) {
       if (existing.topic === "realtime:online-members") {
-        void supabase.removeChannel(existing);
+        supabase.removeChannel(existing).catch(() => {});
       }
     }
 
@@ -50,14 +49,16 @@ export function usePresenceSync() {
       })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          void channel.track({ online_at: new Date().toISOString() });
+          channel
+            .track({ online_at: new Date().toISOString() })
+            .catch(() => {});
         }
       });
 
     return () => {
-      void supabase.removeChannel(channel);
+      supabase.removeChannel(channel).catch(() => {});
     };
-  }, [user?.id, setOnlineIds, supabase]);
+  }, [user?.id, setOnlineIds]);
 }
 
 /** Un membre est « en ligne » s'il est présent sur le canal Realtime. */

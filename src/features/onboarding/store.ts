@@ -33,10 +33,9 @@ export const useOnboardingStore = create<OnboardingState>()(
       setStep: (step) => set({ step }),
       clear: () => set({ ownerId: null, data: EMPTY_ONBOARDING, step: 0 }),
     }),
-    // v2 : le brouillon a gagné des champs (prénom/nom, coordonnées, photos).
-    // Nouvelle clé pour ne pas réhydrater un ancien brouillon à l'ancien
-    // format (qui écraserait les valeurs par défaut et laisserait des champs
-    // indéfinis).
-    { name: "afl-onboarding-draft-v2" },
+    // Clé v3 : le parcours est repassé à 8 écrans groupés (parité jalon) ;
+    // l'ancien index d'étape (jusqu'à 20) serait hors limites — on repart d'un
+    // brouillon propre.
+    { name: "afl-onboarding-draft-v3" },
   ),
 );

@@ -2,6 +2,8 @@
 
 import { type ReactNode } from "react";
 
+import { PresenceSync } from "@/features/presence/presence-sync";
+
 import { AuthProvider } from "./auth-provider";
 import { BottomSheetProvider } from "./bottom-sheet-provider";
 import { ModalProvider } from "./modal-provider";
@@ -28,6 +30,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           <SupabaseProvider>
             <AuthProvider>
               <MotionProvider>
+                <PresenceSync />
                 {children}
                 <ToastProvider />
                 <ModalProvider />

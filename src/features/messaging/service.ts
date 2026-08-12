@@ -1,9 +1,30 @@
-import { type RealtimeChannel } from "@supabase/supabase-js";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
-import { type createClient } from "@/services/supabase/client";
-import type { ChatMessage, Conversation } from "@/features/messaging/types";
+import { db } from "@/services/supabase/browser";
 
-type Client = ReturnType<typeof createClient>;
+/** Une ligne de la liste des conversations — un match et son dernier message. */
+export interface ConversationListItem {
+  matchId: string;
+  matchedAt: string;
+  partnerId: string;
+  partnerFirstName: string;
+  partnerAvatarUrl: string | null;
+  partnerIsVerified: boolean;
+  partnerLastActiveAt: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  lastMessageFromMe: boolean;
+  unreadCount: number;
+}
+
+export interface LiveMessage {
+  id: string;
+  matchId: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  readAt: string | null;
+}
 
 function mapMessage(row: {
   id: string;
@@ -12,7 +33,7 @@ function mapMessage(row: {
   content: string;
   created_at: string;
   read_at: string | null;
-}): ChatMessage {
+}): LiveMessage {
   return {
     id: row.id,
     matchId: row.match_id,
@@ -23,11 +44,10 @@ function mapMessage(row: {
   };
 }
 
-export async function fetchConversations(
-  supabase: Client,
+async function fetchConversations(
   myId: string,
-): Promise<Conversation[]> {
-  const { data, error } = await supabase.rpc("get_my_conversations");
+): Promise<ConversationListItem[]> {
+  const { data, error } = await db().rpc("get_my_conversations");
   if (error) throw error;
 
   return (data ?? []).map((row) => ({
@@ -45,11 +65,8 @@ export async function fetchConversations(
   }));
 }
 
-export async function fetchMessages(
-  supabase: Client,
-  matchId: string,
-): Promise<ChatMessage[]> {
-  const { data, error } = await supabase
+async function fetchMessages(matchId: string): Promise<LiveMessage[]> {
+  const { data, error } = await db()
     .from("messages")
     .select("id, match_id, sender_id, content, created_at, read_at")
     .eq("match_id", matchId)
@@ -59,13 +76,12 @@ export async function fetchMessages(
   return (data ?? []).map(mapMessage);
 }
 
-export async function sendMessage(
-  supabase: Client,
+async function sendMessage(
   matchId: string,
   senderId: string,
   content: string,
-): Promise<ChatMessage> {
-  const { data, error } = await supabase
+): Promise<LiveMessage> {
+  const { data, error } = await db()
     .from("messages")
     .insert({ match_id: matchId, sender_id: senderId, content })
     .select("id, match_id, sender_id, content, created_at, read_at")
@@ -74,31 +90,27 @@ export async function sendMessage(
   return mapMessage(data);
 }
 
-export async function markConversationRead(
-  supabase: Client,
-  matchId: string,
-): Promise<void> {
-  const { error } = await supabase.rpc("mark_messages_read", {
+async function markConversationRead(matchId: string): Promise<void> {
+  const { error } = await db().rpc("mark_messages_read", {
     p_match_id: matchId,
   });
   if (error) throw error;
 }
 
 /**
- * Inserts live pour une conversation, via Supabase Realtime (la table
+ * Inserts en direct pour une conversation, via Supabase Realtime (la table
  * `messages` est dans la publication `supabase_realtime` ; la RLS s'applique
- * toujours à ce que chaque abonné reçoit). Renvoie le canal — l'appelant DOIT
- * `unsubscribe()` au démontage sous peine de fuite d'abonnements.
+ * toujours). Renvoie le canal — l'appelant DOIT `removeChannel()` au démontage
+ * ou la socket fuit des abonnements.
  */
-export function subscribeToMessages(
-  supabase: Client,
+function subscribeToMessages(
   matchId: string,
-  onMessage: (message: ChatMessage) => void,
+  onMessage: (message: LiveMessage) => void,
 ): RealtimeChannel {
-  // Topic unique par abonnement : un topic fixe réutilise l'instance déjà
-  // abonnée au remontage, et l'ajout du callback postgres_changes plante alors.
+  // Topic unique par abonnement : un topic fixe réutiliserait une instance déjà
+  // abonnée et l'ajout du callback postgres_changes planterait.
   const unique = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-  return supabase
+  return db()
     .channel(`messages:${matchId}:${unique}`)
     .on(
       "postgres_changes",
@@ -115,6 +127,17 @@ export function subscribeToMessages(
     .subscribe();
 }
 
-export function unsubscribe(supabase: Client, channel: RealtimeChannel): void {
-  void supabase.removeChannel(channel);
+function unsubscribe(channel: RealtimeChannel): void {
+  db()
+    .removeChannel(channel)
+    .catch(() => {});
 }
+
+export const messagingService = {
+  fetchConversations,
+  fetchMessages,
+  sendMessage,
+  markConversationRead,
+  subscribeToMessages,
+  unsubscribe,
+};

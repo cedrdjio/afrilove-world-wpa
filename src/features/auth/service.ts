@@ -2,7 +2,6 @@ import { AuthApiError, type AuthError } from "@supabase/supabase-js";
 
 import { type createClient } from "@/services/supabase/client";
 import { env } from "@/lib/env";
-import { ROUTES } from "@/constants/routes";
 
 type SupabaseBrowserClient = ReturnType<typeof createClient>;
 
@@ -31,14 +30,16 @@ export function authErrorMessage(error: AuthError | null): string | null {
     msg.includes("already been registered")
   )
     return "Un compte existe déjà avec cette adresse.";
-  if (
-    msg.includes("token has expired") ||
-    msg.includes("invalid token") ||
-    msg.includes("otp")
-  )
-    return "Code incorrect ou expiré. Renvoyez un nouveau code.";
   if (msg.includes("rate limit") || msg.includes("too many"))
     return "Trop de tentatives. Réessayez dans quelques instants.";
+  if (
+    msg.includes("otp_expired") ||
+    msg.includes("token has expired") ||
+    msg.includes("invalid token") ||
+    (msg.includes("token") && msg.includes("expired")) ||
+    (msg.includes("otp") && msg.includes("invalid"))
+  )
+    return "Code invalide ou expiré. Demandez-en un nouveau.";
   if (msg.includes("password"))
     return "Mot de passe invalide (8 caractères min).";
   if (msg.includes("network") || msg.includes("fetch"))
@@ -58,29 +59,29 @@ export async function signInWithPassword(
 
 export async function signUpWithPassword(
   client: SupabaseBrowserClient,
-  input: { email: string; password: string },
+  input: { email: string; password: string; firstName: string },
 ) {
   const result = await client.auth.signUp({
     email: input.email.trim().toLowerCase(),
     password: input.password,
     options: {
-      // Parité mobile : aucune donnée de profil à l'inscription. Le prénom et
-      // le nom sont recueillis à l'onboarding (étape identité / KYC).
-      emailRedirectTo: redirectTo(
-        `/auth/callback?next=${ROUTES.authResolving}`,
-      ),
+      data: { first_name: input.firstName.trim() },
+      emailRedirectTo: redirectTo("/auth/callback"),
     },
   });
-
-  // Confirmation d'e-mail activée : par anti-énumération, GoTrue renvoie un
-  // faux utilisateur (sans identités) au lieu d'une erreur quand l'adresse est
-  // déjà inscrite. Sans ce garde-fou, on enverrait l'utilisateur attendre un
-  // code qui n'arrivera jamais — on remonte la même erreur « déjà inscrit »
-  // que l'API utilise ailleurs (port de `signUpWithEmail` mobile).
-  const { data } = result;
-  if (data.user && !data.session && (data.user.identities?.length ?? 0) === 0) {
+  // Confirmation e-mail activée : GoTrue renvoie (anti-énumération) un faux
+  // utilisateur sans identités au lieu d'une erreur quand l'adresse est déjà
+  // prise. Sans ce garde-fou, on enverrait la personne saisir un code qui
+  // n'arrivera jamais — on le remonte comme l'erreur « déjà inscrit ».
+  const { data, error } = result;
+  if (
+    !error &&
+    data.user &&
+    !data.session &&
+    (data.user.identities?.length ?? 0) === 0
+  ) {
     return {
-      data,
+      data: { user: null, session: null },
       error: new AuthApiError(
         "User already registered",
         400,
@@ -91,22 +92,10 @@ export async function signUpWithPassword(
   return result;
 }
 
-export async function sendPasswordReset(
-  client: SupabaseBrowserClient,
-  emailAddress: string,
-) {
-  // Le lien porte `recovery=1` : la page de réinitialisation n'arme le verrou
-  // de récupération que dans ce contexte, jamais pour un membre déjà connecté
-  // qui visiterait l'URL par curiosité.
-  const next = encodeURIComponent(`${ROUTES.resetPassword}?recovery=1`);
-  return client.auth.resetPasswordForEmail(emailAddress.trim().toLowerCase(), {
-    redirectTo: redirectTo(`/auth/callback?next=${next}`),
-  });
-}
-
 /**
- * Vérifie le code reçu par e-mail (type signup) directement dans l'app —
- * chemin indépendant du retour du lien navigateur (port de `verifySignupOtp`).
+ * Vérifie le code à 6 chiffres reçu par e-mail après l'inscription (type
+ * `signup`). C'est le chemin « par code » : il ne dépend pas d'un aller-retour
+ * navigateur → app comme le ferait le lien magique. Le succès ouvre la session.
  */
 export async function verifySignupOtp(
   client: SupabaseBrowserClient,
@@ -119,7 +108,11 @@ export async function verifySignupOtp(
   });
 }
 
-/** Vérifie le code de récupération (type recovery) — port de `verifyRecoveryOtp`. */
+/**
+ * Vérifie le code de récupération (type `recovery`) saisi dans l'app. Une fois
+ * validé, une session de récupération est ouverte ; l'écran « Nouveau mot de
+ * passe » prend le relais.
+ */
 export async function verifyRecoveryOtp(
   client: SupabaseBrowserClient,
   input: { email: string; token: string },
@@ -131,34 +124,24 @@ export async function verifyRecoveryOtp(
   });
 }
 
-/** Renvoie l'e-mail de confirmation d'inscription — port de `resendSignupEmail`. */
-export async function resendSignupEmail(
+/** Renvoie un nouveau code d'inscription (invalide le précédent). */
+export async function resendSignupOtp(
   client: SupabaseBrowserClient,
   emailAddress: string,
 ) {
   return client.auth.resend({
     type: "signup",
     email: emailAddress.trim().toLowerCase(),
-    options: {
-      emailRedirectTo: redirectTo(
-        `/auth/callback?next=${ROUTES.authResolving}`,
-      ),
-    },
+    options: { emailRedirectTo: redirectTo("/auth/callback") },
   });
 }
 
-/**
- * Connexion Google via OAuth (redirection). Le retour repasse par
- * `/auth/callback` qui échange le code puis route vers la résolution.
- * Équivalent web de `useGoogleAuth` (mobile) — masqué tant que le provider
- * n'est pas activé (voir `NEXT_PUBLIC_GOOGLE_OAUTH_ENABLED`).
- */
-export async function signInWithGoogle(client: SupabaseBrowserClient) {
-  return client.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      redirectTo: redirectTo(`/auth/callback?next=${ROUTES.authResolving}`),
-    },
+export async function sendPasswordReset(
+  client: SupabaseBrowserClient,
+  emailAddress: string,
+) {
+  return client.auth.resetPasswordForEmail(emailAddress.trim().toLowerCase(), {
+    redirectTo: redirectTo("/auth/callback?next=/auth/reset-password"),
   });
 }
 
@@ -167,6 +150,27 @@ export async function updatePassword(
   newPassword: string,
 ) {
   return client.auth.updateUser({ password: newPassword });
+}
+
+/**
+ * Connexion via Google (OAuth PKCE). Le retour passe par `/auth/callback`, qui
+ * échange le code contre une session puis route vers `next` (les gardes des
+ * pages arbitrent onboarding vs découverte). Inscription et connexion partagent
+ * ce flux — Google crée le compte au premier passage.
+ */
+export async function signInWithGoogle(
+  client: SupabaseBrowserClient,
+  next = "/discover",
+) {
+  const nextPath = next.startsWith("/") ? next : "/discover";
+  return client.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: redirectTo(
+        `/auth/callback?next=${encodeURIComponent(nextPath)}`,
+      ),
+    },
+  });
 }
 
 export async function signOut(client: SupabaseBrowserClient) {

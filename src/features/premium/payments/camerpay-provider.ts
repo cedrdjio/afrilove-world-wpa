@@ -1,29 +1,15 @@
-import type {
-  CheckoutContext,
-  CheckoutInput,
-  PaymentProvider,
-  PaymentResult,
-  SupabaseLike,
-} from "./types";
+import { db } from "@/services/supabase/browser";
+import { logEvent } from "@/services/log";
 
-/**
- * Fournisseur CamerPay — port web de `camerpayProvider` (mobile).
- *
- * Le mobile ouvre la page hébergée dans un in-app browser
- * (`openAuthSessionAsync`) et attend le retour par deep link, puis interroge
- * son propre statut. Le web n'a pas cet équivalent : on ouvre CamerPay dans une
- * **fenêtre** (ouverte dans le geste utilisateur par l'écran, passée ici) et on
- * interroge `payment-status` jusqu'à résolution — le webhook reste la source de
- * vérité. Si la fenêtre est bloquée, on retombe sur une **redirection pleine
- * page** + la page `/premium/callback` qui reprend le polling.
- */
+import type { CheckoutInput, PaymentProvider, PaymentResult } from "./types";
 
-/** Clé de reprise (repli redirection) lue par la page de retour. */
-export const PENDING_PAYMENT_KEY = "afrilove.pendingPayment";
-
+// Le webhook payment-webhook, pas le navigateur, fait foi. Après ouverture de
+// la page de paiement, on interroge notre propre ligne de transaction (lisible
+// via RLS) jusqu'à ce que le serveur l'ait réglée. Les confirmations mobile
+// money peuvent tarder quelques secondes.
 const POLL_INTERVAL_MS = 2500;
-const POLL_WINDOW_OPEN_MS = 90_000; // fenêtre encore ouverte / retour effectué
-const POLL_WINDOW_DISMISSED_MS = 12_000; // l'utilisateur a fermé la fenêtre
+const POLL_WINDOW_MS = 90_000; // fenêtre totale d'attente de confirmation
+const POLL_GRACE_AFTER_CLOSE_MS = 12_000; // délai de grâce après fermeture
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -33,12 +19,8 @@ interface InitiateResponse {
   invoiceId: string;
 }
 
-async function initiate(
-  supabase: SupabaseLike,
-  input: CheckoutInput,
-): Promise<InitiateResponse> {
-  const { data, error } = await supabase.functions.invoke("payment-initiate", {
-    // phone est absent pour Stripe/PayPal — CamerPay n'en a pas besoin.
+async function initiate(input: CheckoutInput): Promise<InitiateResponse> {
+  const { data, error } = await db().functions.invoke("payment-initiate", {
     body: {
       planKey: input.planKey,
       phone: input.phone ?? undefined,
@@ -46,27 +28,23 @@ async function initiate(
     },
   });
   if (error) throw error;
-  const res = data as Partial<InitiateResponse> | null;
-  if (!res?.payUrl || !res?.transactionUuid) {
+  if (!data?.payUrl || !data?.transactionUuid) {
     throw new Error("Le paiement n'a pas pu être démarré.");
   }
-  return res as InitiateResponse;
+  return data as InitiateResponse;
 }
 
 /**
- * Interroge `payment-status`, qui revérifie auprès de CamerPay et règle la
- * transaction côté serveur — le premium s'active même si le webhook s'est
- * perdu. Repli : lecture de notre propre ligne `payment_transactions` (RLS).
+ * Interroge la fonction Edge payment-status, qui revérifie auprès de CamerPay
+ * et règle la transaction côté serveur — le premium s'active même si le webhook
+ * n'a pas été configuré. Repli : lecture de notre propre ligne de transaction.
  */
-export async function fetchStatus(
-  supabase: SupabaseLike,
-  transactionUuid: string,
-): Promise<string> {
+async function fetchStatus(transactionUuid: string): Promise<string> {
+  const supabase = db();
   const { data, error } = await supabase.functions.invoke("payment-status", {
     body: { transactionUuid },
   });
-  const status = (data as { status?: unknown } | null)?.status;
-  if (!error && typeof status === "string") return status;
+  if (!error && typeof data?.status === "string") return data.status;
 
   const { data: row } = await supabase
     .from("payment_transactions")
@@ -76,56 +54,6 @@ export async function fetchStatus(
   return row?.status ?? "pending";
 }
 
-/** Sonde jusqu'à issue nette dans la fenêtre donnée ; `null` si toujours en attente. */
-export async function pollUntilResolved(
-  supabase: SupabaseLike,
-  transactionUuid: string,
-  windowMs: number,
-): Promise<PaymentResult | null> {
-  const deadline = Date.now() + windowMs;
-  while (Date.now() < deadline) {
-    const status = await fetchStatus(supabase, transactionUuid);
-    if (status === "completed") {
-      return { outcome: "succeeded", providerRef: transactionUuid };
-    }
-    if (status === "failed" || status === "canceled") {
-      return { outcome: "failed", providerRef: transactionUuid };
-    }
-    await sleep(POLL_INTERVAL_MS);
-  }
-  return null;
-}
-
-async function pollWithPopup(
-  supabase: SupabaseLike,
-  transactionUuid: string,
-  popup: Window,
-): Promise<PaymentResult> {
-  const deadline = Date.now() + POLL_WINDOW_OPEN_MS;
-  while (Date.now() < deadline) {
-    const status = await fetchStatus(supabase, transactionUuid);
-    if (status === "completed") {
-      return { outcome: "succeeded", providerRef: transactionUuid };
-    }
-    if (status === "failed" || status === "canceled") {
-      return { outcome: "failed", providerRef: transactionUuid };
-    }
-    if (popup.closed) {
-      // L'utilisateur a fermé la fenêtre. Il a pu payer puis fermer : courte
-      // fenêtre de grâce, sinon on considère l'achat annulé.
-      return (
-        (await pollUntilResolved(
-          supabase,
-          transactionUuid,
-          POLL_WINDOW_DISMISSED_MS,
-        )) ?? { outcome: "canceled", providerRef: transactionUuid }
-      );
-    }
-    await sleep(POLL_INTERVAL_MS);
-  }
-  return { outcome: "pending", providerRef: transactionUuid };
-}
-
 export const camerpayProvider: PaymentProvider = {
   id: "camerpay",
 
@@ -133,49 +61,78 @@ export const camerpayProvider: PaymentProvider = {
     return true;
   },
 
-  async checkout(
-    supabase: SupabaseLike,
-    input: CheckoutInput,
-    ctx?: CheckoutContext,
-  ): Promise<PaymentResult> {
-    const popup = ctx?.popup ?? null;
-
+  async checkout(input: CheckoutInput): Promise<PaymentResult> {
     let payUrl: string;
     let transactionUuid: string;
     try {
-      ({ payUrl, transactionUuid } = await initiate(supabase, input));
+      ({ payUrl, transactionUuid } = await initiate(input));
     } catch (error) {
-      popup?.close();
+      logEvent(
+        "error",
+        "payment_initiate_failed",
+        error instanceof Error ? error.message : String(error),
+        { planKey: input.planKey, method: input.paymentMethod },
+      );
       throw error;
     }
+    logEvent("info", "payment_initiated", undefined, {
+      planKey: input.planKey,
+      method: input.paymentMethod,
+      transactionUuid,
+    });
 
-    // Fenêtre disponible : on y charge CamerPay et on sonde jusqu'à l'issue.
-    if (popup && !popup.closed) {
-      try {
-        popup.location.href = payUrl;
-      } catch {
-        // Certains navigateurs interdisent d'écrire location d'une popup
-        // cross-origin déjà naviguée — on ouvre une nouvelle fenêtre.
-        window.open(payUrl, "camerpay");
-      }
-      const result = await pollWithPopup(supabase, transactionUuid, popup);
-      if (!popup.closed) popup.close();
-      return result;
+    // Ouvre la page hébergée CamerPay dans une popup (repli : redirection même
+    // onglet si la popup est bloquée). On ne peut pas lire l'URL de retour
+    // cross-origin, donc le résultat vient du polling de payment-status.
+    const popup =
+      typeof window !== "undefined"
+        ? window.open(payUrl, "camerpay", "width=480,height=720")
+        : null;
+    if (!popup && typeof window !== "undefined") {
+      window.location.href = payUrl;
+      return { outcome: "pending", providerRef: transactionUuid };
     }
 
-    // Fenêtre bloquée → repli redirection pleine page ; la page /premium/callback
-    // reprend le polling au retour.
-    if (typeof window !== "undefined") {
-      try {
-        sessionStorage.setItem(
-          PENDING_PAYMENT_KEY,
-          JSON.stringify({ transactionUuid, planLabel: ctx?.planLabel ?? "" }),
-        );
-      } catch {
-        // sessionStorage indisponible : le callback lira le statut au retour.
+    const deadline = Date.now() + POLL_WINDOW_MS;
+    let closedAt: number | null = null;
+
+    while (Date.now() < deadline) {
+      const status = await fetchStatus(transactionUuid);
+      if (status === "completed") {
+        popup?.close();
+        return finish("succeeded");
       }
-      window.location.assign(payUrl);
+      if (status === "failed" || status === "canceled") {
+        popup?.close();
+        return finish("failed");
+      }
+
+      // La popup fermée = l'utilisateur a terminé : on laisse un délai de grâce
+      // (il a pu payer puis fermer) puis on tranche « annulé » si rien ne vient.
+      if (popup?.closed) {
+        if (closedAt === null) closedAt = Date.now();
+        else if (Date.now() - closedAt > POLL_GRACE_AFTER_CLOSE_MS) {
+          return finish("canceled");
+        }
+      }
+      await sleep(POLL_INTERVAL_MS);
     }
-    return { outcome: "pending", providerRef: transactionUuid };
+
+    popup?.close();
+    return finish("pending");
+
+    function finish(outcome: PaymentResult["outcome"]): PaymentResult {
+      logEvent(
+        outcome === "failed" ? "warn" : "info",
+        "payment_outcome",
+        outcome,
+        {
+          planKey: input.planKey,
+          method: input.paymentMethod,
+          transactionUuid,
+        },
+      );
+      return { outcome, providerRef: transactionUuid };
+    }
   },
 };
