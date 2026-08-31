@@ -18,6 +18,7 @@ import {
   persistOnboarding,
 } from "@/features/onboarding/service";
 import { useOnboardingStore } from "@/features/onboarding/store";
+import { looksLikeContactInfo } from "@/features/messaging/contact-guard";
 import {
   MIN_INTERESTS,
   type OnboardingData,
@@ -86,7 +87,8 @@ const STEPS: StepDef[] = [
     key: "bio",
     title: "Présentez-vous",
     subtitle: "Quelques mots sincères font toute la différence.",
-    valid: (d) => d.bio.trim().length > 0,
+    // Coordonnées interdites en bio (numéros / pseudos de messagerie).
+    valid: (d) => d.bio.trim().length > 0 && !looksLikeContactInfo(d.bio),
   },
   {
     key: "photos",
@@ -181,10 +183,16 @@ export function OnboardingWizard() {
       clear();
       haptic("success");
       router.replace(ROUTES.discover);
-    } catch {
+    } catch (error) {
       setFinishing(false);
       haptic("error");
-      toast.error("Impossible d’enregistrer votre profil. Réessayez.");
+      if (error instanceof Error && error.message === "BIO_CONTAINS_CONTACT") {
+        toast.error(
+          "Retirez le numéro ou le contact de votre bio pour continuer.",
+        );
+      } else {
+        toast.error("Impossible d’enregistrer votre profil. Réessayez.");
+      }
     }
   }
 

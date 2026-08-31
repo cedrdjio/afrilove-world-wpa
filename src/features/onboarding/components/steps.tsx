@@ -25,6 +25,7 @@ import {
   SMOKING_OPTIONS,
 } from "@/features/onboarding/config";
 import { interestIcon } from "@/lib/interest-icon";
+import { looksLikeContactInfo } from "@/features/messaging/contact-guard";
 import {
   type CatalogOption,
   type CountryOption,
@@ -801,6 +802,9 @@ export function LanguagesStep({
 
 const BIO_MAX = 500;
 export function BioStep({ data, patch }: StepProps) {
+  // Coordonnées interdites en bio (numéros, pseudos de messagerie) : même règle
+  // que la messagerie, les échanges se font une fois le match établi.
+  const hasContact = looksLikeContactInfo(data.bio);
   return (
     <div className="flex flex-col gap-2">
       <Textarea
@@ -810,10 +814,21 @@ export function BioStep({ data, patch }: StepProps) {
         placeholder="Parlez de vous, de ce que vous aimez, de ce que vous recherchez…"
         onChange={(e) => patch({ bio: e.target.value })}
         aria-label="Bio"
+        aria-invalid={hasContact}
       />
-      <p className="text-muted-foreground self-end text-xs tabular-nums">
-        {data.bio.length}/{BIO_MAX}
-      </p>
+      <div className="flex items-start justify-between gap-3">
+        {hasContact ? (
+          <p className="text-danger text-xs font-semibold">
+            Pas de numéro ni de contact dans la bio. Échangez vos coordonnées
+            dans la messagerie une fois le match établi.
+          </p>
+        ) : (
+          <span />
+        )}
+        <p className="text-muted-foreground shrink-0 text-xs tabular-nums">
+          {data.bio.length}/{BIO_MAX}
+        </p>
+      </div>
     </div>
   );
 }

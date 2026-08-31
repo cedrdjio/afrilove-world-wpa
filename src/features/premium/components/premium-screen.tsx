@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, m } from "framer-motion";
-import { Check, Crown, Loader2, Sparkles, X } from "lucide-react";
+import { Check, Crown, Gift, Loader2, Sparkles, X } from "lucide-react";
 
 import { useAuth } from "@/providers/auth-provider";
 import { useHaptics } from "@/hooks/use-haptics";
@@ -82,7 +82,10 @@ const DATE_FMT = new Intl.DateTimeFormat("fr-FR", {
 export function PremiumScreen() {
   const router = useRouter();
   const haptic = useHaptics();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
+
+  // Modèle « offert aux femmes » : elles ne voient jamais l'option de paiement.
+  const isWoman = isAuthenticated && profile?.gender === "femme";
 
   const { data: realPlans, isLoading: plansLoading } = usePremiumPlans();
   const { data: entitlements } = useEntitlements();
@@ -152,6 +155,8 @@ export function PremiumScreen() {
 
         {isPremium ? (
           <PremiumActive until={entitlements?.premiumUntil ?? null} />
+        ) : isWoman ? (
+          <PremiumOffered />
         ) : (
           <>
             <ul className="mt-9 flex flex-col gap-3">
@@ -270,6 +275,49 @@ export function PremiumScreen() {
           />
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Vue « Premium offert » — servie aux femmes : aucune option de paiement, les
+ * avantages sont présentés comme offerts (modèle freemium femmes gratuit).
+ */
+function PremiumOffered() {
+  return (
+    <div className="mt-9 flex flex-1 flex-col">
+      <div className="rounded-[var(--radius-lg)] border border-white/20 bg-white/10 p-6 text-center backdrop-blur-lg">
+        <span className="from-brand-400 to-brand-500 shadow-brand mx-auto grid size-12 place-items-center rounded-full bg-gradient-to-br">
+          <Gift className="size-6 text-white" aria-hidden />
+        </span>
+        <p className="font-display mt-3 text-lg font-extrabold">
+          Premium offert
+        </p>
+        <p className="mt-1 text-sm text-white/70">
+          Sur AfriLove, les femmes profitent des avantages Premium sans rien
+          payer.
+        </p>
+      </div>
+
+      <ul className="mt-6 flex flex-col gap-3">
+        {PERKS.map((perk) => (
+          <li key={perk} className="flex items-center gap-3 text-[0.95rem]">
+            <span className="grid size-6 shrink-0 place-items-center rounded-full bg-white/15">
+              <Check
+                className="text-brand-300 size-4"
+                strokeWidth={3}
+                aria-hidden
+              />
+            </span>
+            {perk}
+          </li>
+        ))}
+      </ul>
+
+      <div className="min-h-6 flex-1" />
+      <p className="text-center text-xs text-white/60">
+        Aucun paiement requis · profite de tout, librement
+      </p>
     </div>
   );
 }

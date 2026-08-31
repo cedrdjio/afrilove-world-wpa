@@ -1,4 +1,5 @@
 import { type createClient } from "@/services/supabase/client";
+import { looksLikeContactInfo } from "@/features/messaging/contact-guard";
 import { type OnboardingData } from "./types";
 
 type Client = ReturnType<typeof createClient>;
@@ -86,6 +87,11 @@ export async function persistOnboarding(
   const displayName = data.displayName.trim();
   const privateName = data.privateName.trim();
   const profession = data.profession.trim();
+
+  // Garde-fou : jamais de coordonnées en bio (numéro / pseudo de messagerie).
+  if (looksLikeContactInfo(data.bio)) {
+    throw new Error("BIO_CONTAINS_CONTACT");
+  }
 
   const { error: profileError } = await client
     .from("profiles")
